@@ -1,0 +1,2 @@
+clang --cuda-gpu-arch=sm_60 --cuda-path=/sw/summitdev/cuda/8.0.61-1/ -c -S -emit-llvm test.cu
+clang --cuda-gpu-arch=sm_60 --cuda-path=/sw/summitdev/cuda/8.0.61-1/ -L/sw/summitdev/cuda/8.0.61-1/lib64 -lcudart -ldl -lrt -lpthread test.cu -O3 -o test
