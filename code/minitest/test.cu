@@ -30,8 +30,8 @@ int main()
 
     cudaMalloc((void **)&d_a, size*sizeof(int));
     cudaMemcpy(d_a, a, size*sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_b, b, size*sizeof(int), cudaMemcpyHostToDevice);
     cudaMalloc((void **)&d_b, size*sizeof(int));
+    cudaMemcpy(d_b, b, size*sizeof(int), cudaMemcpyHostToDevice);
 
     MyKernel<<<BlockNum, BlockSize>>>(d_a, d_b, size);
 
