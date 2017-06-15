@@ -328,13 +328,10 @@ namespace {
             if (Info->DataMap.find(AI) != Info->DataMap.end()) {
               if (Info->DataMap.find(AI)->second->type == 1) { // device space
                 DataEntry *data_entry = Info->DataMap.find(AI)->second;
-                Instruction *managed_base_ptr;
                 if (data_entry->pair_entry == NULL)
                   continue;
-                  //managed_base_ptr = dyn_cast<Instruction>(data_entry->reallocated_base_ptr);
-                else
-                  managed_base_ptr = dyn_cast<Instruction>(data_entry->pair_entry->reallocated_base_ptr);
                 // Replace usage of device ptrs with managed ptrs
+                Instruction *managed_base_ptr = dyn_cast<Instruction>(data_entry->pair_entry->reallocated_base_ptr);
                 assert(managed_base_ptr);
                 if (managed_base_ptr->getType() != AI->getType())
                   errs() << "Error: not the same type\n";
