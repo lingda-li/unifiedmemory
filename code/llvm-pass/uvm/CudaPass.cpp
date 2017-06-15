@@ -228,9 +228,41 @@ namespace {
         for (auto &I : BB) {
           if (auto *CI = dyn_cast<CallInst>(&I)) {
             auto *Callee = CI->getCalledFunction();
-            if (Callee && Callee->getName() == "cudaLaunch") {
-            } else if (Callee && Callee->getName() == "cudaSetupArgument") {
-            } else if (Callee && Callee->getName() == "cudaMalloc") {
+            if (Callee && Callee->getName() == "cudaMalloc") {
+              // Find corresponding entry in data map
+              DataEntry *data_entry = NULL;
+              auto *AllocPtr = CI->getArgOperand(0);
+              if (auto *BCI = dyn_cast<BitCastInst>(AllocPtr)) {
+                assert(BCI->getNumOperands() == 1);
+                Value *BasePtr = BCI->getOperand(0);
+                if (auto *AI = dyn_cast<AllocaInst>(BasePtr)) {
+                  Value *BasePtr = AI;
+                  assert(Info->DataMap.find(BasePtr) != Info->DataMap.end());
+                  data_entry = Info->DataMap.find(BasePtr)->second;
+                } else
+                  errs() << "Error\n";
+              } else
+                errs() << "Error\n";
+              assert(data_entry);
+              if (data_entry->pair_entry == NULL) {
+                errs() << "Info: this device ptr does not map to host ";
+                data_entry->base_ptr->dump();
+
+                // Replace cudaMalloc with cudaMallocManaged
+                IRBuilder<> builder(CI);
+                // Insert cudaMallocManaged
+                Value* args[] = {CI->getArgOperand(0), CI->getArgOperand(1)};
+                auto *ICI = builder.CreateCall(cudaMallocManagedFunc, args);
+                // Remove malloc
+                for(auto& U : CI->uses()) {
+                  User* user = U.getUser();
+                  user->setOperand(U.getOperandNo(), ICI);
+                }
+                errs() << "  reallocate ";
+                CI->dump();
+                errs() << "        with ";
+                ICI->dump();
+              }
               InstsToDelete.push_back(CI);
               Changed = true;
             } else if (Callee && Callee->getName() == "cudaMemcpy") {
@@ -278,9 +310,9 @@ namespace {
               // Correspond host ptr with managed ptr
               assert(data_entry->reallocated_base_ptr == NULL);
               data_entry->reallocated_base_ptr = AI;
-              errs() << "reallocate ";
+              errs() << "  reallocate ";
               data_entry->base_ptr->dump();
-              errs() << "      with ";
+              errs() << "        with ";
               data_entry->reallocated_base_ptr->dump();
 
               InstsToDelete.push_back(CI);
@@ -296,32 +328,33 @@ namespace {
             if (Info->DataMap.find(AI) != Info->DataMap.end()) {
               if (Info->DataMap.find(AI)->second->type == 1) { // device space
                 DataEntry *data_entry = Info->DataMap.find(AI)->second;
-                if (data_entry->pair_entry == NULL) {
-                  errs() << "Info: this device ptr does not map to host ";
-                } else {
-                  // Replace usage of device ptrs with managed ptrs
-                  Instruction *managed_base_ptr = dyn_cast<Instruction>(data_entry->pair_entry->reallocated_base_ptr);
-                  assert(managed_base_ptr);
-                  if (managed_base_ptr->getType() != AI->getType())
-                    errs() << "Error: not the same type\n";
-                  errs() << "replace ";
-                  AI->dump();
-                  errs() << "   with ";
-                  managed_base_ptr->dump();
-                  int i = 0;
-                  SmallVector<User*, 6> Users;
-                  SmallVector<unsigned, 6> UsersNo;
-                  for (auto& U : AI->uses()) {
-                    User* user = U.getUser();
-                    Users.push_back(user);
-                    UsersNo.push_back(U.getOperandNo());
-                  }
-                  while (!Users.empty()) {
-                    User* user = Users.back();
-                    user->setOperand(UsersNo.back(), managed_base_ptr);
-                    Users.pop_back();
-                    UsersNo.pop_back();
-                  }
+                Instruction *managed_base_ptr;
+                if (data_entry->pair_entry == NULL)
+                  continue;
+                  //managed_base_ptr = dyn_cast<Instruction>(data_entry->reallocated_base_ptr);
+                else
+                  managed_base_ptr = dyn_cast<Instruction>(data_entry->pair_entry->reallocated_base_ptr);
+                // Replace usage of device ptrs with managed ptrs
+                assert(managed_base_ptr);
+                if (managed_base_ptr->getType() != AI->getType())
+                  errs() << "Error: not the same type\n";
+                errs() << "replace ";
+                AI->dump();
+                errs() << "   with ";
+                managed_base_ptr->dump();
+                int i = 0;
+                SmallVector<User*, 6> Users;
+                SmallVector<unsigned, 6> UsersNo;
+                for (auto& U : AI->uses()) {
+                  User* user = U.getUser();
+                  Users.push_back(user);
+                  UsersNo.push_back(U.getOperandNo());
+                }
+                while (!Users.empty()) {
+                  User* user = Users.back();
+                  user->setOperand(UsersNo.back(), managed_base_ptr);
+                  Users.pop_back();
+                  UsersNo.pop_back();
                 }
                 InstsToDelete.push_back(AI);
                 Changed = true;
@@ -352,7 +385,8 @@ namespace {
                 }
                 InstsToDelete.push_back(AI);
                 Changed = true;
-              }
+              } else
+                errs() << "Error";
             }
           } else if (auto *CI = dyn_cast<CallInst>(&I)) {
             auto *Callee = CI->getCalledFunction();
