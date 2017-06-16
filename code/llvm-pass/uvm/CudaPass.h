@@ -12,14 +12,48 @@ class DataEntry {
 public:
   Value *base_ptr;
   unsigned type; // 0: host, 1: device
-  SmallVector<Value *, 4> alias_ptrs;
+  bool keep_me;
+  Type *ptr_type;
   DataEntry *pair_entry;
   Value *reallocated_base_ptr;
+  SmallVector<Value *, 4> alias_ptrs;
+  SmallVector<Value *, 2> base_alias_ptrs;
+
+  DataEntry(Value *in_base_ptr, unsigned in_type) {
+    base_ptr = in_base_ptr;
+    type = in_type;
+    assert(type == 0 || type == 1);
+    keep_me = false;
+    pair_entry = NULL;
+    reallocated_base_ptr = NULL;
+  }
 };
 
 class DataInfo {
 public:
   DenseMap<Value*, DataEntry*> DataMap;
+
+  DataEntry* getBaseAliasEntry(Value *base_alias_ptr) {
+    for (auto DMEntry : DataMap) {
+      if (DMEntry.second->base_ptr == base_alias_ptr)
+        return DMEntry.second;
+      for (Value *CAPTR: DMEntry.second->base_alias_ptrs) {
+        if(CAPTR == base_alias_ptr)
+          return DMEntry.second;
+      }
+    }
+    return NULL;
+  }
+
+  bool tryInsertBaseAliasEntry(DataEntry *data_entry, Value *base_alias_ptr) {
+    for (Value *CAPTR: data_entry->base_alias_ptrs) {
+      if(CAPTR == base_alias_ptr)
+        return false;
+    }
+    data_entry->base_alias_ptrs.push_back(base_alias_ptr);
+    return true;
+  }
+
   DataEntry* getAliasEntry(Value *alias_ptr) {
     for (auto DMEntry : DataMap) {
       for (Value *CAPTR: DMEntry.second->alias_ptrs) {
@@ -38,7 +72,12 @@ public:
     return NULL;
   }
 
-  void insertAliasEntry(DataEntry *data_entry, Value *alias_ptr) {
+  bool tryInsertAliasEntry(DataEntry *data_entry, Value *alias_ptr) {
+    for (Value *CAPTR: data_entry->alias_ptrs) {
+      if(CAPTR == alias_ptr)
+        return false;
+    }
     data_entry->alias_ptrs.push_back(alias_ptr);
+    return true;
   }
 };

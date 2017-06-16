@@ -10,6 +10,8 @@
 #include "CudaPass.h"
 using namespace llvm;
 
+#define DEBUG_PRINT {errs() << "Error: "<< __LINE__ << "\n";}
+
 namespace {
   //struct CudaMallocAnalysisPass : public ModulePass {}
   struct CudaMallocAnalysisPass : public FunctionPass {
@@ -36,7 +38,6 @@ namespace {
             auto *Callee = CI->getCalledFunction();
             if (Callee && Callee->getName() == "cudaMalloc") {
               auto *AllocPtr = CI->getArgOperand(0);
-              AllocPtr->dump();
               if (auto *BCI = dyn_cast<BitCastInst>(AllocPtr)) {
                 assert(BCI->getNumOperands() == 1);
                 Value *BasePtr = BCI->getOperand(0);
@@ -45,18 +46,23 @@ namespace {
                   if (Info->DataMap.find(BasePtr) == Info->DataMap.end()) {
                     errs() << "new entry device" << "\n";
                     BasePtr->dump();
-                    DataEntry *data_entry = new DataEntry;
-                    data_entry->base_ptr = BasePtr;
-                    data_entry->type = 1; // device space
-                    data_entry->pair_entry = NULL;
-                    data_entry->reallocated_base_ptr = NULL;
+                    DataEntry *data_entry = new DataEntry(BasePtr, 1); // device space
                     Info->DataMap.insert(std::make_pair(BasePtr, data_entry));
                   } else
                     errs() << "Error: redundant allocation?\n";
                 } else
-                  errs() << "Error\n";
+                  DEBUG_PRINT
+              } else if (auto *AI = dyn_cast<AllocaInst>(AllocPtr)) {
+                Value *BasePtr = AI;
+                if (Info->DataMap.find(BasePtr) == Info->DataMap.end()) {
+                  errs() << "new entry device" << "\n";
+                  BasePtr->dump();
+                  DataEntry *data_entry = new DataEntry(BasePtr, 1); // device space
+                  Info->DataMap.insert(std::make_pair(BasePtr, data_entry));
+                } else
+                  errs() << "Error: redundant allocation?\n";
               } else
-                errs() << "Error\n";
+                DEBUG_PRINT
             } else if (Callee && Callee->getName() == "cudaMallocManaged") {
               errs() << "Error: cannot address cudaMallocManaged now\n";
             } else if (Callee && Callee->getName() == "malloc") {
@@ -70,11 +76,8 @@ namespace {
                       if (Info->DataMap.find(BasePtr) == Info->DataMap.end()) {
                         errs() << "new entry host" << "\n";
                         BasePtr->dump();
-                        DataEntry *data_entry = new DataEntry;
-                        data_entry->base_ptr = BasePtr;
-                        data_entry->type = 0; // host space
-                        data_entry->pair_entry = NULL;
-                        data_entry->reallocated_base_ptr = NULL;
+                        DataEntry *data_entry = new DataEntry(BasePtr, 0); // host space
+                        data_entry->ptr_type = SI->getOperand(0)->getType();
                         data_entry->alias_ptrs.push_back(BCI);
                         data_entry->alias_ptrs.push_back(CI);
                         errs() << " alias entry ";
@@ -85,10 +88,23 @@ namespace {
                       } else
                         errs() << "Error: redundant allocation?\n";
                     } else
-                      errs() << "Error\n";
+                      DEBUG_PRINT
                   }
+                } else if (auto *SI = dyn_cast<StoreInst>(user)) {
+                  Value *BasePtr = SI->getOperand(1);
+                  if (Info->DataMap.find(BasePtr) == Info->DataMap.end()) {
+                    errs() << "new entry host" << "\n";
+                    BasePtr->dump();
+                    DataEntry *data_entry = new DataEntry(BasePtr, 0); // host space
+                    data_entry->ptr_type = SI->getOperand(0)->getType();
+                    data_entry->alias_ptrs.push_back(CI);
+                    errs() << " alias entry ";
+                    CI->dump();
+                    Info->DataMap.insert(std::make_pair(BasePtr, data_entry));
+                  } else
+                    errs() << "Error: redundant allocation?\n";
                 } else
-                  errs() << "Error\n";
+                  DEBUG_PRINT
               }
             }
           }
@@ -125,8 +141,7 @@ namespace {
             assert(LI->getNumOperands() >= 1);
             Value *LoadAddr = LI->getOperand(0);
             if (DataMapPtr->find(LoadAddr) != DataMapPtr->end()) {
-              if (!Info->getAliasEntry(DataMapPtr->find(LoadAddr)->second, LI)) {
-                Info->insertAliasEntry(DataMapPtr->find(LoadAddr)->second, LI);
+              if(Info->tryInsertAliasEntry(DataMapPtr->find(LoadAddr)->second, LI)) {
                 errs() << "new alias entry for ";
                 LI->dump();
               }
@@ -134,9 +149,21 @@ namespace {
           } else if (auto *BCI = dyn_cast<BitCastInst>(&I)) {
             Value *CastSource = BCI->getOperand(0);
             if (auto *SourceEntry = Info->getAliasEntry(CastSource)) {
-              if (!Info->getAliasEntry(SourceEntry, BCI)) {
-                Info->insertAliasEntry(SourceEntry, BCI);
+              if (Info->tryInsertAliasEntry(SourceEntry, BCI)) {
                 errs() << "new alias entry for ";
+                BCI->dump();
+              }
+            }
+            if (auto *SourceEntry = Info->getBaseAliasEntry(CastSource)) {
+              if (Info->tryInsertBaseAliasEntry(SourceEntry, BCI)) {
+                errs() << "new base alias entry for ";
+                BCI->dump();
+              }
+            }
+            if (Info->DataMap.find(CastSource) != Info->DataMap.end()) {
+              auto *SourceEntry = Info->DataMap.find(CastSource)->second;
+              if (Info->tryInsertBaseAliasEntry(SourceEntry, BCI)) {
+                errs() << "new base alias entry for ";
                 BCI->dump();
               }
             }
@@ -156,7 +183,6 @@ namespace {
     CudaHDMapAnalysisPass() : FunctionPass(ID) {}
 
     virtual bool runOnFunction(Function &F) {
-      //errs() << "I saw a function called " << F.getName() << "!\n";
       //if (F.getName() == "main")
       if (F.getParent() != PreModule) {
         PreModule = F.getParent();
@@ -174,7 +200,6 @@ namespace {
               ConstantInt* DCI = dyn_cast<ConstantInt>(CI->getArgOperand(3));
               assert(DCI);
               auto direction = DCI->getValue();
-              errs() << "map direction " << direction << "\n";
               if (direction == 1) {
                 HostData = CI->getArgOperand(1);
                 DeviceData = CI->getArgOperand(0);
@@ -182,19 +207,25 @@ namespace {
                 HostData = CI->getArgOperand(0);
                 DeviceData = CI->getArgOperand(1);
               }
-              HostData->dump();
-              DeviceData->dump();
-              auto *HostEntry = Info->getAliasEntry(HostData);
-              auto *DeviceEntry = Info->getAliasEntry(DeviceData);
-              if (!HostEntry || !DeviceEntry)
-                errs() << "Error: did not find alias pointers\n";
-              if (HostEntry->pair_entry != NULL || DeviceEntry->pair_entry != NULL)
-                if (HostEntry->pair_entry != DeviceEntry || DeviceEntry->pair_entry != HostEntry)
-                  errs() << "Error: a data entry is mapped more than once\n";
-              HostEntry->pair_entry = DeviceEntry;
-              DeviceEntry->pair_entry = HostEntry;
-              HostEntry->base_ptr->dump();
-              DeviceEntry->base_ptr->dump();
+              DataEntry *HostEntry = Info->getAliasEntry(HostData);
+              DataEntry *DeviceEntry = Info->getAliasEntry(DeviceData);
+              if (!DeviceEntry)
+                errs() << "Error: a device space is not allocated using cudaMalloc\n";
+              if (!HostEntry) {
+                errs() << "Info: a host space is not allocated using malloc\n";
+                DeviceEntry->keep_me = true;
+              } else {
+                errs() << "map direction " << direction << "\n";
+                HostData->dump();
+                DeviceData->dump();
+                if (HostEntry->pair_entry != NULL || DeviceEntry->pair_entry != NULL)
+                  if (HostEntry->pair_entry != DeviceEntry || DeviceEntry->pair_entry != HostEntry)
+                    errs() << "Error: a data entry is mapped more than once\n";
+                HostEntry->pair_entry = DeviceEntry;
+                DeviceEntry->pair_entry = HostEntry;
+                HostEntry->base_ptr->dump();
+                DeviceEntry->base_ptr->dump();
+              }
             }
           }
         }
@@ -233,20 +264,15 @@ namespace {
             auto *Callee = CI->getCalledFunction();
             if (Callee && Callee->getName() == "cudaMalloc") {
               // Find corresponding entry in data map
-              DataEntry *data_entry = NULL;
               auto *AllocPtr = CI->getArgOperand(0);
-              if (auto *BCI = dyn_cast<BitCastInst>(AllocPtr)) {
-                assert(BCI->getNumOperands() == 1);
-                Value *BasePtr = BCI->getOperand(0);
-                if (auto *AI = dyn_cast<AllocaInst>(BasePtr)) {
-                  Value *BasePtr = AI;
-                  assert(Info->DataMap.find(BasePtr) != Info->DataMap.end());
-                  data_entry = Info->DataMap.find(BasePtr)->second;
-                } else
-                  errs() << "Error\n";
-              } else
-                errs() << "Error\n";
+              DataEntry *data_entry = Info->getBaseAliasEntry(AllocPtr);
               assert(data_entry);
+              if (data_entry->keep_me) {
+                errs() << "Info: did not remove ";
+                CI->dump();
+                continue;
+              }
+
               if (data_entry->pair_entry == NULL) {
                 errs() << "Info: this device ptr does not map to host ";
                 data_entry->base_ptr->dump();
@@ -273,6 +299,19 @@ namespace {
               ConstantInt* DCI = dyn_cast<ConstantInt>(CI->getArgOperand(3));
               assert(DCI);
               auto direction = DCI->getValue();
+              Value *DeviceData;
+              if (direction == 1)
+                DeviceData = CI->getArgOperand(0);
+              else if (direction == 2)
+                DeviceData = CI->getArgOperand(1);
+              DataEntry *data_entry = Info->getAliasEntry(DeviceData);
+              assert(data_entry);
+              if (data_entry->keep_me) {
+                errs() << "Info: did not remove ";
+                CI->dump();
+                continue;
+              }
+
               // Insert cudaDeviceSynchronize() for data transfer from device to host
               // FIXME: potential redundant cudaDeviceSynchronize()
               if (direction == 2) {
@@ -283,6 +322,15 @@ namespace {
               Changed = true;
             } else if (Callee && Callee->getName() == "cudaMallocManaged") {
             } else if (Callee && Callee->getName() == "cudaFree") {
+              auto *FreePtr = CI->getArgOperand(0);
+              DataEntry *data_entry = Info->getAliasEntry(FreePtr);
+              assert(data_entry);
+              if (data_entry->keep_me) {
+                errs() << "Info: did not remove ";
+                CI->dump();
+                continue;
+              }
+
               // Delete all cudaFree, since managed memory is released on free
               // FIXME: this only works for pure cudaMalloc version, need to preserve cudaFree for cudaMallocManaged
               InstsToDelete.push_back(CI);
@@ -291,25 +339,10 @@ namespace {
               errs() << "address ";
               CI->dump();
               // Find corresponding entry in data map
-              DataEntry *data_entry = NULL;
-              Type* AllocType;
-              for (auto& U : CI->uses()) {
-                User* user = U.getUser();
-                if (auto *BCI = dyn_cast<BitCastInst>(user)) {
-                  for (auto& UU : BCI->uses()) {
-                    User* uuser = UU.getUser();
-                    if (auto *SI = dyn_cast<StoreInst>(uuser)) {
-                      Value *BasePtr = SI->getOperand(1);
-                      assert(Info->DataMap.find(BasePtr) != Info->DataMap.end());
-                      data_entry = Info->DataMap.find(BasePtr)->second;
-                      AllocType = SI->getOperand(0)->getType();
-                    } else
-                      errs() << "Error\n";
-                  }
-                } else
-                  errs() << "Error\n";
-              }
+              DataEntry *data_entry = Info->getAliasEntry(CI);
               assert(data_entry);
+              Type* AllocType = data_entry->ptr_type;
+
               IRBuilder<> builder(CI);
               // Allocate space for the pointer of cudaMallocManaged's first argument
               auto *AI = builder.CreateAlloca(AllocType);
@@ -411,7 +444,7 @@ namespace {
                 InstsToDelete.push_back(AI);
                 Changed = true;
               } else
-                errs() << "Error";
+                DEBUG_PRINT
             }
           } else if (auto *CI = dyn_cast<CallInst>(&I)) {
             auto *Callee = CI->getCalledFunction();
