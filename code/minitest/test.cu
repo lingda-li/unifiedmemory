@@ -47,12 +47,14 @@ int main()
     cudaMemcpy(b, d_b, size*sizeof(int), cudaMemcpyDeviceToHost);
     DEBUG_PRINT
     //cudaDeviceSynchronize();
+    cudaFree(d_a);
+    cudaFree(d_b);
 
     for(i = 0; i < size; i++)
         sum_b += b[i];
     DEBUG_PRINT
-    cudaFree(d_a);
-    cudaFree(d_b);
+    free(a);
+    free(b);
 
     printf("sum_a: %d, sum_b: %d\n", sum_a, sum_b);
 

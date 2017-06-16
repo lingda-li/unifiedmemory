@@ -222,6 +222,7 @@ namespace {
       auto* I8PPTy = PointerType::get(PointerType::get(Type::getInt8Ty(Ctx), 0), 0);
       Constant* cudaMallocManagedFunc = F.getParent()->getOrInsertFunction("cudaMallocManaged", Type::getInt32Ty(Ctx), I8PPTy, Type::getInt64Ty(Ctx), Type::getInt32Ty(Ctx), NULL);
       Constant* cudaDeviceSynchronizeFunc = F.getParent()->getOrInsertFunction("cudaDeviceSynchronize", Type::getInt32Ty(Ctx), NULL);
+      Constant* cudaFreeFunc = F.getParent()->getOrInsertFunction("cudaFree", Type::getInt32Ty(Ctx), PointerType::get(Type::getInt8Ty(Ctx), 0), NULL);
       Changed = true;
       SmallVector<Instruction*, 8> InstsToDelete;
 
@@ -280,6 +281,11 @@ namespace {
               InstsToDelete.push_back(CI);
               Changed = true;
             } else if (Callee && Callee->getName() == "cudaMallocManaged") {
+            } else if (Callee && Callee->getName() == "cudaFree") {
+              // Delete all cudaFree, since managed memory is released on free
+              // FIXME: this only works for pure cudaMalloc version, need to preserve cudaFree for cudaMallocManaged
+              InstsToDelete.push_back(CI);
+              Changed = true;
             } else if (Callee && Callee->getName() == "malloc") {
               errs() << "address ";
               CI->dump();
@@ -327,6 +333,15 @@ namespace {
               errs() << "        with ";
               data_entry->reallocated_base_ptr->dump();
 
+              InstsToDelete.push_back(CI);
+              Changed = true;
+            } else if (Callee && Callee->getName() == "free") {
+              // Replace it with cudaFree
+              errs() << "address ";
+              CI->dump();
+              IRBuilder<> builder(CI);
+              Value* args[] = {CI->getArgOperand(0)};
+              auto *CFCI = builder.CreateCall(cudaFreeFunc, args);
               InstsToDelete.push_back(CI);
               Changed = true;
             }
