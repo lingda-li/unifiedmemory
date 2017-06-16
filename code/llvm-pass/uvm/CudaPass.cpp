@@ -58,6 +58,7 @@ namespace {
               } else
                 errs() << "Error\n";
             } else if (Callee && Callee->getName() == "cudaMallocManaged") {
+              errs() << "Error: cannot address cudaMallocManaged now\n";
             } else if (Callee && Callee->getName() == "malloc") {
               for (auto& U : CI->uses()) {
                 User* user = U.getUser();
