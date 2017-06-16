@@ -148,16 +148,19 @@ namespace {
             }
           } else if (auto *BCI = dyn_cast<BitCastInst>(&I)) {
             Value *CastSource = BCI->getOperand(0);
+            unsigned NumAlias = 0;
             if (auto *SourceEntry = Info->getAliasEntry(CastSource)) {
               if (Info->tryInsertAliasEntry(SourceEntry, BCI)) {
                 errs() << "new alias entry for ";
                 BCI->dump();
+                NumAlias++;
               }
             }
             if (auto *SourceEntry = Info->getBaseAliasEntry(CastSource)) {
               if (Info->tryInsertBaseAliasEntry(SourceEntry, BCI)) {
                 errs() << "new base alias entry for ";
                 BCI->dump();
+                NumAlias++;
               }
             }
             if (Info->DataMap.find(CastSource) != Info->DataMap.end()) {
@@ -165,8 +168,11 @@ namespace {
               if (Info->tryInsertBaseAliasEntry(SourceEntry, BCI)) {
                 errs() << "new base alias entry for ";
                 BCI->dump();
+                NumAlias++;
               }
             }
+            if (NumAlias > 1)
+              errs() << "Error: a value is alias for multiple entries\n";
           }
         }
       }
