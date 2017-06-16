@@ -57,7 +57,6 @@ namespace {
                   errs() << "Error\n";
               } else
                 errs() << "Error\n";
-            } else if (Callee && Callee->getName() == "cudaMemcpy") {
             } else if (Callee && Callee->getName() == "cudaMallocManaged") {
             } else if (Callee && Callee->getName() == "malloc") {
               for (auto& U : CI->uses()) {
@@ -221,7 +220,9 @@ namespace {
       bool Changed = false;
       LLVMContext& Ctx = F.getContext();
       auto* I8PPTy = PointerType::get(PointerType::get(Type::getInt8Ty(Ctx), 0), 0);
-      Constant* cudaMallocManagedFunc = F.getParent()->getOrInsertFunction("cudaMallocManaged", Type::getInt32Ty(Ctx), I8PPTy, Type::getInt64Ty(Ctx), NULL);
+      Constant* cudaMallocManagedFunc = F.getParent()->getOrInsertFunction("cudaMallocManaged", Type::getInt32Ty(Ctx), I8PPTy, Type::getInt64Ty(Ctx), Type::getInt32Ty(Ctx), NULL);
+      Constant* cudaDeviceSynchronizeFunc = F.getParent()->getOrInsertFunction("cudaDeviceSynchronize", Type::getInt32Ty(Ctx), NULL);
+      Changed = true;
       SmallVector<Instruction*, 8> InstsToDelete;
 
       for (auto &BB : F) {
@@ -251,7 +252,8 @@ namespace {
                 // Replace cudaMalloc with cudaMallocManaged
                 IRBuilder<> builder(CI);
                 // Insert cudaMallocManaged
-                Value* args[] = {CI->getArgOperand(0), CI->getArgOperand(1)};
+                ConstantInt *ThirdArg = ConstantInt::get(Type::getInt32Ty(Ctx), 1, false);
+                Value* args[] = {CI->getArgOperand(0), CI->getArgOperand(1), ThirdArg};
                 auto *ICI = builder.CreateCall(cudaMallocManagedFunc, args);
                 // Remove malloc
                 for(auto& U : CI->uses()) {
@@ -266,6 +268,15 @@ namespace {
               InstsToDelete.push_back(CI);
               Changed = true;
             } else if (Callee && Callee->getName() == "cudaMemcpy") {
+              ConstantInt* DCI = dyn_cast<ConstantInt>(CI->getArgOperand(3));
+              assert(DCI);
+              auto direction = DCI->getValue();
+              // Insert cudaDeviceSynchronize() for data transfer from device to host
+              // FIXME: potential redundant cudaDeviceSynchronize()
+              if (direction == 2) {
+                IRBuilder<> builder(CI);
+                auto *CDSCI = builder.CreateCall(cudaDeviceSynchronizeFunc);
+              }
               InstsToDelete.push_back(CI);
               Changed = true;
             } else if (Callee && Callee->getName() == "cudaMallocManaged") {
@@ -298,7 +309,8 @@ namespace {
               // Cast it to i8**
               auto *BCI = builder.CreateBitCast(AI, I8PPTy);
               // Insert cudaMallocManaged
-              Value* args[] = {BCI, CI->getArgOperand(0)};
+              ConstantInt *ThirdArg = ConstantInt::get(Type::getInt32Ty(Ctx), 1, false); // Not sure what is this number
+              Value* args[] = {BCI, CI->getArgOperand(0), ThirdArg};
               auto *ICI = builder.CreateCall(cudaMallocManagedFunc, args);
               // Load the pointer of allocated space
               auto *LI = builder.CreateLoad(PointerType::get((Type::getInt8Ty(Ctx)), 0), BCI);
@@ -391,6 +403,7 @@ namespace {
             } else if (Callee && Callee->getName() == "cudaSetupArgument") {
             } else if (Callee && Callee->getName() == "cudaMalloc") {
             } else if (Callee && Callee->getName() == "cudaMemcpy") {
+              // Potential sanity check here
             } else if (Callee && Callee->getName() == "cudaMallocManaged") {
             } else if (Callee && Callee->getName() == "malloc") {
             }
