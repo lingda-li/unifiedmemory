@@ -44,9 +44,9 @@ namespace {
                 if (auto *AI = dyn_cast<AllocaInst>(BasePtr)) {
                   Value *BasePtr = AI;
                   if (Info->DataMap.find(BasePtr) == Info->DataMap.end()) {
-                    errs() << "new entry device" << "\n";
+                    errs() << "new device entry ";
                     BasePtr->dump();
-                    DataEntry *data_entry = new DataEntry(BasePtr, 1); // device space
+                    DataEntry *data_entry = new DataEntry(BasePtr, 1, CI->getArgOperand(1)); // device space
                     Info->DataMap.insert(std::make_pair(BasePtr, data_entry));
                   } else
                     errs() << "Error: redundant allocation?\n";
@@ -55,9 +55,9 @@ namespace {
               } else if (auto *AI = dyn_cast<AllocaInst>(AllocPtr)) {
                 Value *BasePtr = AI;
                 if (Info->DataMap.find(BasePtr) == Info->DataMap.end()) {
-                  errs() << "new entry device" << "\n";
+                  errs() << "new device entry ";
                   BasePtr->dump();
-                  DataEntry *data_entry = new DataEntry(BasePtr, 1); // device space
+                  DataEntry *data_entry = new DataEntry(BasePtr, 1, CI->getArgOperand(1)); // device space
                   Info->DataMap.insert(std::make_pair(BasePtr, data_entry));
                 } else
                   errs() << "Error: redundant allocation?\n";
@@ -74,15 +74,15 @@ namespace {
                     if (auto *SI = dyn_cast<StoreInst>(uuser)) {
                       Value *BasePtr = SI->getOperand(1);
                       if (Info->DataMap.find(BasePtr) == Info->DataMap.end()) {
-                        errs() << "new entry host" << "\n";
+                        errs() << "new host entry ";
                         BasePtr->dump();
-                        DataEntry *data_entry = new DataEntry(BasePtr, 0); // host space
+                        DataEntry *data_entry = new DataEntry(BasePtr, 0, CI->getArgOperand(0)); // host space
                         data_entry->ptr_type = SI->getOperand(0)->getType();
                         data_entry->alias_ptrs.push_back(BCI);
                         data_entry->alias_ptrs.push_back(CI);
-                        errs() << " alias entry ";
+                        errs() << "  alias entry ";
                         BCI->dump();
-                        errs() << " alias entry ";
+                        errs() << "  alias entry ";
                         CI->dump();
                         Info->DataMap.insert(std::make_pair(BasePtr, data_entry));
                       } else
@@ -93,12 +93,12 @@ namespace {
                 } else if (auto *SI = dyn_cast<StoreInst>(user)) {
                   Value *BasePtr = SI->getOperand(1);
                   if (Info->DataMap.find(BasePtr) == Info->DataMap.end()) {
-                    errs() << "new entry host" << "\n";
+                    errs() << "new host entry ";
                     BasePtr->dump();
-                    DataEntry *data_entry = new DataEntry(BasePtr, 0); // host space
+                    DataEntry *data_entry = new DataEntry(BasePtr, 0, CI->getArgOperand(0)); // host space
                     data_entry->ptr_type = SI->getOperand(0)->getType();
                     data_entry->alias_ptrs.push_back(CI);
-                    errs() << " alias entry ";
+                    errs() << "  alias entry ";
                     CI->dump();
                     Info->DataMap.insert(std::make_pair(BasePtr, data_entry));
                   } else
@@ -226,7 +226,7 @@ namespace {
                 DeviceData->dump();
                 if (HostEntry->pair_entry != NULL || DeviceEntry->pair_entry != NULL)
                   if (HostEntry->pair_entry != DeviceEntry || DeviceEntry->pair_entry != HostEntry)
-                    errs() << "Error: a data entry is mapped more than once\n";
+                    errs() << "Error: a data entry is mapped to different entries\n";
                 HostEntry->pair_entry = DeviceEntry;
                 DeviceEntry->pair_entry = HostEntry;
                 HostEntry->base_ptr->dump();

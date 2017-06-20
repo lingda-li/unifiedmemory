@@ -12,20 +12,24 @@ class DataEntry {
 public:
   Value *base_ptr;
   unsigned type; // 0: host, 1: device
-  bool keep_me;
+  Value *size;
   Type *ptr_type;
+
   DataEntry *pair_entry;
   Value *reallocated_base_ptr;
   SmallVector<Value *, 4> alias_ptrs;
   SmallVector<Value *, 2> base_alias_ptrs;
+  bool keep_me;
 
-  DataEntry(Value *in_base_ptr, unsigned in_type) {
+  DataEntry(Value *in_base_ptr, unsigned in_type, Value *in_size) {
     base_ptr = in_base_ptr;
     type = in_type;
     assert(type == 0 || type == 1);
-    keep_me = false;
+    size = in_size;
+
     pair_entry = NULL;
     reallocated_base_ptr = NULL;
+    keep_me = false;
   }
 };
 
@@ -37,7 +41,7 @@ public:
     for (auto DMEntry : DataMap) {
       if (DMEntry.second->base_ptr == base_alias_ptr)
         return DMEntry.second;
-      for (Value *CAPTR: DMEntry.second->base_alias_ptrs) {
+      for (Value *CAPTR : DMEntry.second->base_alias_ptrs) {
         if(CAPTR == base_alias_ptr)
           return DMEntry.second;
       }
@@ -46,7 +50,7 @@ public:
   }
 
   bool tryInsertBaseAliasEntry(DataEntry *data_entry, Value *base_alias_ptr) {
-    for (Value *CAPTR: data_entry->base_alias_ptrs) {
+    for (Value *CAPTR : data_entry->base_alias_ptrs) {
       if(CAPTR == base_alias_ptr)
         return false;
     }
@@ -56,7 +60,7 @@ public:
 
   DataEntry* getAliasEntry(Value *alias_ptr) {
     for (auto DMEntry : DataMap) {
-      for (Value *CAPTR: DMEntry.second->alias_ptrs) {
+      for (Value *CAPTR : DMEntry.second->alias_ptrs) {
         if(CAPTR == alias_ptr)
           return DMEntry.second;
       }
@@ -65,7 +69,7 @@ public:
   }
 
   DataEntry* getAliasEntry(DataEntry *data_entry, Value *alias_ptr) {
-    for (Value *CAPTR: data_entry->alias_ptrs) {
+    for (Value *CAPTR : data_entry->alias_ptrs) {
       if(CAPTR == alias_ptr)
         return data_entry;
     }
@@ -73,7 +77,7 @@ public:
   }
 
   bool tryInsertAliasEntry(DataEntry *data_entry, Value *alias_ptr) {
-    for (Value *CAPTR: data_entry->alias_ptrs) {
+    for (Value *CAPTR : data_entry->alias_ptrs) {
       if(CAPTR == alias_ptr)
         return false;
     }
