@@ -133,16 +133,15 @@ namespace {
         errs() << "  ---- Memory Alias Analysis ----\n";
       }
       Info = &getAnalysis<CudaMallocAnalysisPass>().getInfo();
-      DenseMap<Value*, DataEntry*> *DataMapPtr = &Info->DataMap;
       // Find all pointers that could point to memory related to GPU
       for (auto &BB : F) {
         for (auto &I : BB) {
           if (auto *LI = dyn_cast<LoadInst>(&I)) {
             assert(LI->getNumOperands() >= 1);
             Value *LoadAddr = LI->getOperand(0);
-            if (DataMapPtr->find(LoadAddr) != DataMapPtr->end()) {
-              if(Info->tryInsertAliasEntry(DataMapPtr->find(LoadAddr)->second, LI)) {
-                errs() << "new alias entry for ";
+            if (DataEntry *InsertEntry = Info->getBaseAliasEntry(LoadAddr)) {
+              if(Info->tryInsertAliasEntry(InsertEntry, LI)) {
+                errs() << "  alias entry ";
                 LI->dump();
               }
             }
@@ -151,14 +150,14 @@ namespace {
             unsigned NumAlias = 0;
             if (auto *SourceEntry = Info->getAliasEntry(CastSource)) {
               if (Info->tryInsertAliasEntry(SourceEntry, BCI)) {
-                errs() << "new alias entry for ";
+                errs() << "  alias entry ";
                 BCI->dump();
                 NumAlias++;
               }
             }
             if (auto *SourceEntry = Info->getBaseAliasEntry(CastSource)) {
               if (Info->tryInsertBaseAliasEntry(SourceEntry, BCI)) {
-                errs() << "new base alias entry for ";
+                errs() << "  base alias entry ";
                 BCI->dump();
                 NumAlias++;
               }
@@ -166,7 +165,7 @@ namespace {
             if (Info->DataMap.find(CastSource) != Info->DataMap.end()) {
               auto *SourceEntry = Info->DataMap.find(CastSource)->second;
               if (Info->tryInsertBaseAliasEntry(SourceEntry, BCI)) {
-                errs() << "new base alias entry for ";
+                errs() << "  base alias entry ";
                 BCI->dump();
                 NumAlias++;
               }

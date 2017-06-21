@@ -17,9 +17,9 @@ public:
 
   DataEntry *pair_entry;
   Value *reallocated_base_ptr;
-  SmallVector<Value *, 4> alias_ptrs;
+  SmallVector<Value *, 8> alias_ptrs;
   SmallVector<Value *, 2> base_alias_ptrs;
-  bool keep_me;
+  bool keep_me; // keep original allocation & data transfer
 
   DataEntry(Value *in_base_ptr, unsigned in_type, Value *in_size) {
     base_ptr = in_base_ptr;
@@ -35,7 +35,7 @@ public:
 
 class DataInfo {
 public:
-  DenseMap<Value*, DataEntry*> DataMap;
+  DenseMap<Value*, DataEntry*> DataMap; // keep all allocated memory space
 
   DataEntry* getBaseAliasEntry(Value *base_alias_ptr) {
     for (auto DMEntry : DataMap) {
