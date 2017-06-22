@@ -1,7 +1,8 @@
 #clang --cuda-gpu-arch=sm_35 -I/software/cuda/8.0/include -L/software/cuda/8.0/lib64 -c -S -emit-llvm -Xclang -load -Xclang /home/lli/git/unifiedmem/code/llvm-pass/build/uvm/libCudaPass.so test.cu
 #clang --cuda-gpu-arch=sm_35 -I/software/cuda/8.0/include -L/software/cuda/8.0/lib64 -lcudart_static -ldl -lrt -pthread  -c -S -emit-llvm -Xclang -load -Xclang /home/lli/git/unifiedmem/code/llvm-pass/build/uvm/libCudaPass.so test.cu
 #clang --cuda-gpu-arch=sm_35 -I/software/cuda/8.0/include -L/software/cuda/8.0/lib64 -lcudart -ldl -lrt -pthread  -c -S -emit-llvm test.ll
-clang --cuda-gpu-arch=sm_35 -I/software/cuda/8.0/include -L/software/cuda/8.0/lib64 -lcudart -ldl -lrt -pthread test.cu -O3 -o test
+#clang --cuda-gpu-arch=sm_35 -I/software/cuda/8.0/include -L/software/cuda/8.0/lib64 -lcudart -ldl -lrt -pthread test.cu -O3 -o test
+clang --cuda-gpu-arch=sm_35 -I/software/cuda/8.0/include -L/software/cuda/8.0/lib64 -lcudart -ldl -lrt -pthread -Xclang -load -Xclang /home/lli/git/unifiedmem/code/llvm-pass/build/uvm/libCudaPass.so test.cu -O3 -o test
 #clang --cuda-gpu-arch=sm_35 -I/software/cuda/8.0/include -L/software/cuda/8.0/lib64 -c -S -emit-llvm test.cu -o test.ll
 
 #clang --cuda-gpu-arch=sm_35 -I/software/cuda/8.0/include -L/software/cuda/8.0/lib64 -lcudart -ldl -lrt -pthread test_m.cu -O3 -o test_m

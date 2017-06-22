@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MYDEBUG
+//#define MYDEBUG
 #ifdef MYDEBUG
 #define DEBUG_PRINT printf("here: %d\n", __LINE__); fflush(stdout);
 #else
