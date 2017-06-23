@@ -1,7 +1,5 @@
 #include "uvm-runtime.h"
 
-//#define ALL_MANAGED
-
 void uvmMalloc(struct uvmMallocInfo* uvmInfo)
 {
   size_t size = uvmInfo->size;
@@ -26,8 +24,13 @@ void uvmFree(struct uvmMallocInfo* uvmInfo)
 
 void uvmMemcpy(struct uvmMallocInfo* uvmInfo, cudaMemcpyKind kind)
 {
-  if (uvmInfo->isSame)
+  if (uvmInfo->isSame) {
+#ifdef GPU_PRE_PASCAL
+    if (kind == cudaMemcpyDeviceToHost)
+      cudaDeviceSynchronize();
+#endif
     return;
+  }
   void* devPtr = uvmInfo->devPtr;
   void* hostPtr = uvmInfo->hostPtr;
   size_t size = uvmInfo->size;

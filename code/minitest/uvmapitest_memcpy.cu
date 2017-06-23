@@ -58,6 +58,7 @@ int main()
 
     for(i = 0; i < size; i++)
         sum_b += h_b[i];
+    DEBUG_PRINT
 
     uvmFree(&a_info);
     uvmFree(&b_info);
