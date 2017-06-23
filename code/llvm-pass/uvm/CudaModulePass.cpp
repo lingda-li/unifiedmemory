@@ -324,7 +324,8 @@ namespace {
               } else if (Callee && Callee->getName() == "cudaFree") {
                 auto *FreePtr = CI->getArgOperand(0);
                 DataEntry *data_entry = Info->getAliasEntry(FreePtr);
-                assert(data_entry);
+                if (!data_entry)
+                  continue;
                 if (data_entry->keep_me) {
                   errs() << "Info: did not remove ";
                   CI->dump();
