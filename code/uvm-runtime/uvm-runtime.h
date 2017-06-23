@@ -1,6 +1,3 @@
-#define ALL_MANAGED
-#define GPU_PRE_PASCAL
-
 struct uvmMallocInfo {
   void* devPtr;
   size_t size;

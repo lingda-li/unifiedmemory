@@ -1,5 +1,8 @@
 #include "uvm-runtime.h"
 
+#define ALL_MANAGED
+#define GPU_PRE_PASCAL
+
 void uvmMalloc(struct uvmMallocInfo* uvmInfo)
 {
   size_t size = uvmInfo->size;

@@ -11,7 +11,7 @@ using namespace llvm;
 class DataEntry {
 public:
   Value *base_ptr;
-  unsigned type; // 0: host, 1: device
+  unsigned type; // 0: host, 1: device, 2: managed
   Value *size;
   Type *ptr_type;
 
@@ -24,7 +24,7 @@ public:
   DataEntry(Value *in_base_ptr, unsigned in_type, Value *in_size) {
     base_ptr = in_base_ptr;
     type = in_type;
-    assert(type == 0 || type == 1);
+    assert(type >= 0 && type <= 2);
     size = in_size;
 
     pair_entry = NULL;
