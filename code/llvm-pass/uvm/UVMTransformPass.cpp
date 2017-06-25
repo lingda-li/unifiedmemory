@@ -81,6 +81,7 @@ namespace {
       unsigned NumRounds = 0;
       while (!Funcs.empty()) {
         SmallVector<Function*, 4> AddedFuncs;
+        errs() << "Round " << NumRounds << "\n";
         for (Function *FP : Funcs) {
           auto &F = *FP;
           for (auto &BB : F) {
@@ -93,6 +94,20 @@ namespace {
                     errs() << "  alias entry ";
                     LI->dump();
                   }
+                }
+              } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
+                Value *StoreContent = SI->getOperand(0);
+                Value *StoreAddr = SI->getOperand(1);
+                if (DataEntry *InsertEntry = Info->getAliasEntry(StoreContent)) {
+                  if(Info->tryInsertBaseAliasEntry(InsertEntry, StoreAddr)) {
+                    errs() << "  base alias entry ";
+                    StoreAddr->dump();
+                  }
+                }
+                if (DataEntry *InsertEntry = Info->getBaseAliasEntry(StoreAddr)) {
+                  DataEntry *InsertEntry2 = Info->getAliasEntry(StoreContent);
+                  if (InsertEntry != InsertEntry2)
+                    errs() << "Warning: store a different alias pointer to a base pointer\n";
                 }
               } else if (auto *BCI = dyn_cast<BitCastInst>(&I)) {
                 Value *CastSource = BCI->getOperand(0);
@@ -123,14 +138,32 @@ namespace {
                   errs() << "Error: a value is alias for multiple entries\n";
               } else if (auto *CI = dyn_cast<CallInst>(&I)) {
                 auto *Callee = CI->getCalledFunction();
-                if (Callee && Callee->getName() == "cudaMallocManaged")
+                if (Callee && Callee->isIntrinsic())
+                  continue;
+                else if (Callee && Callee->getName() == "cudaMallocManaged")
                   continue;
                 else if (Callee && Callee->getName() == "cudaFree")
                   continue;
                 bool Use = false;
                 for (int i = 0; i < I.getNumOperands(); i++) {
                   Value *OPD = I.getOperand(i);
-                  if (Info->getAliasEntry(OPD) || Info->getBaseAliasEntry(OPD)) {
+                  unsigned AliasTy = 0;
+                  DataEntry *SourceEntry;
+                  if (auto *E = Info->getAliasEntry(OPD)) {
+                    SourceEntry = E;
+                    AliasTy += 1;
+                  }
+                  if (auto *E = Info->getBaseAliasEntry(OPD)) {
+                    SourceEntry = E;
+                    AliasTy += 2;
+                  }
+                  assert(AliasTy < 3);
+                  if (AliasTy > 0) {
+                    if (Callee && Callee->isDeclaration()) {
+                      if (Callee->getName() != "cudaSetupArgument")
+                        errs() << "Warning: reach to function declaration " << Callee->getName();
+                      break;
+                    }
                     Use = true;
                     int argcount = 0;
                     Function::ArgumentListType::iterator A;
@@ -140,10 +173,21 @@ namespace {
                       argcount++;
                     }
                     assert(argcount == i);
+                    if (AliasTy == 1) {
+                      if (Info->tryInsertAliasEntry(SourceEntry, &(*A))) {
+                        errs() << "  alias entry (func arg) ";
+                        A->dump();
+                      }
+                    } else {
+                      if (Info->tryInsertBaseAliasEntry(SourceEntry, &(*A))) {
+                        errs() << "  base alias entry (func arg) ";
+                        A->dump();
+                      }
+                    }
                   }
                 }
                 if (Use) {
-                  errs() << "Info: add function " << Callee->getName() << " in Round " << NumRounds << "\n";
+                  errs() << "Info: add function " << Callee->getName() << " to Round " << NumRounds+1 << "\n";
                   AddedFuncs.push_back(Callee);
                 }
               }
@@ -155,13 +199,13 @@ namespace {
           Funcs.pop_back();
         for (Function *FP : AddedFuncs)
           Funcs.push_back(FP);
+        while (!AddedFuncs.empty())
+          AddedFuncs.pop_back();
         NumRounds++;
       }
+      errs() << "Round end\n";
 
-      if (!Succeeded)
-        return false;
-
-      // Find all usage of allocated space
+      // Find where data pointer is passed to GPU kernel
       for (Function &F : M) {
         if (F.isDeclaration())
           continue;
@@ -170,47 +214,22 @@ namespace {
             bool Use = false;
             if (auto *CI = dyn_cast<CallInst>(&I)) {
               auto *Callee = CI->getCalledFunction();
-              if (Callee && Callee->getName() == "cudaMallocManaged")
-                continue;
-              else if (Callee && Callee->getName() == "cudaFree")
-                continue;
-              for (int i = 0; i < I.getNumOperands(); i++) {
-                Value *OPD = I.getOperand(i);
-                if (Info->getAliasEntry(OPD) || Info->getBaseAliasEntry(OPD)) {
-                  errs() << "Mark\n";
-                  int argcount = 0;
-                  Function::ArgumentListType::iterator A;
-                  for (A = Callee->getArgumentList().begin(); A != Callee->getArgumentList().end(); A++) {
-                    if (argcount == i)
-                      break;
-                    argcount++;
-                  }
-                  assert(argcount == i);
+              if (Callee && Callee->getName() == "cudaSetupArgument") {
+                auto FirstArg = I.getOperand(0);
+                if (DataEntry *SourceEntry = Info->getBaseAliasEntry(&(*FirstArg))) {
+                  errs() << "Info: data ";
+                  SourceEntry->base_ptr->dump();
+                  errs() << "  is passed to a kernel through ";
+                  FirstArg->dump();
                 }
-              }
-            }
-            for (int i = 0; i < I.getNumOperands(); i++) {
-              Value *OPD = I.getOperand(i);
-              if (Info->getAliasEntry(OPD))
-                Use = true;
-              if (Info->getBaseAliasEntry(OPD))
-                Use = true;
-            }
-            if (Use) {
-              I.dump();
-              // Go into callee function
-              if (auto *CI = dyn_cast<CallInst>(&I)) {
-                Function *Callee = CI->getCalledFunction();
-                Callee->dump();
-                //for (auto A : Callee->getArgumentList())
-                auto A = Callee->getArgumentList().begin();
-                //for (auto A : Callee->getArgumentList())
-                A->dump();
               }
             }
           }
         }
       }
+
+      if (!Succeeded)
+        return false;
 
       bool Changed = false;
       return Changed;
