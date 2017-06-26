@@ -146,7 +146,7 @@ namespace {
                   continue;
                 bool Use = false;
                 for (int i = 0; i < I.getNumOperands(); i++) {
-                  Value *OPD = I.getOperand(i);
+                  Value *OPD = CI->getOperand(i);
                   unsigned AliasTy = 0;
                   DataEntry *SourceEntry;
                   if (auto *E = Info->getAliasEntry(OPD)) {
@@ -215,12 +215,41 @@ namespace {
             if (auto *CI = dyn_cast<CallInst>(&I)) {
               auto *Callee = CI->getCalledFunction();
               if (Callee && Callee->getName() == "cudaSetupArgument") {
-                auto FirstArg = I.getOperand(0);
+                auto FirstArg = CI->getOperand(0);
                 if (DataEntry *SourceEntry = Info->getBaseAliasEntry(&(*FirstArg))) {
                   errs() << "Info: data ";
                   SourceEntry->base_ptr->dump();
                   errs() << "  is passed to a kernel through ";
                   FirstArg->dump();
+                  SourceEntry->send2kernel.push_back(CI);
+
+                  // Find the corresponding kernel call
+                  Instruction *NextInst = CI->getNextNode();
+                  auto *CBB = &BB;
+                  bool FoundKernel = false;
+                  do {
+                    if (auto *NCI = dyn_cast<CallInst>(NextInst)) {
+                      auto *NextCallee = NCI->getCalledFunction();
+                      if (NextCallee && NextCallee->getName() == "cudaLaunch") {
+                        errs() << "  kernel call is ";
+                        NCI->dump();
+                        FoundKernel = true;
+                        SourceEntry->kernel.push_back(NCI);
+                        break;
+                      }
+                    }
+                    NextInst = NextInst->getNextNode();
+                    if (!NextInst) {
+                      CBB = CBB->getNextNode();
+                      if (!CBB)
+                        break;
+                      NextInst = &(*CBB->begin());
+                    }
+                  } while (NextInst);
+                  if (!FoundKernel) {
+                    errs() << "Error: didn't find the kernel call\n";
+                    Succeeded = false;
+                  }
                 }
               }
             }
@@ -230,6 +259,10 @@ namespace {
 
       if (!Succeeded)
         return false;
+
+      // Change memory allocation api calls
+      // Insert memory copy api calls
+      // Change memory free api calls
 
       bool Changed = false;
       return Changed;

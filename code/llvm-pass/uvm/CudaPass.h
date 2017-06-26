@@ -17,9 +17,13 @@ public:
 
   DataEntry *pair_entry;
   Value *reallocated_base_ptr;
-  SmallVector<Value *, 8> alias_ptrs;
-  SmallVector<Value *, 2> base_alias_ptrs;
+  SmallVector<Value*, 8> alias_ptrs;
+  SmallVector<Value*, 2> base_alias_ptrs;
   bool keep_me; // keep original allocation & data transfer
+
+  Instruction *alloc;
+  SmallVector<Instruction*, 2> send2kernel;
+  SmallVector<Instruction*, 2> kernel;
 
   DataEntry(Value *in_base_ptr, unsigned in_type, Value *in_size) {
     base_ptr = in_base_ptr;
@@ -30,6 +34,7 @@ public:
     pair_entry = NULL;
     reallocated_base_ptr = NULL;
     keep_me = false;
+    alloc = NULL;
   }
 };
 
