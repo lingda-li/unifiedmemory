@@ -261,9 +261,17 @@ namespace {
         }
       }
 
-      // Change memory allocation api calls
-      // Insert memory copy api calls
-      // Change memory free api calls
+      // Transform CUDA APIs to UVM runtime APIs
+      bool Changed = false;
+      LLVMContext& Ctx = M.getContext();
+      auto UVMMemInfoTy = StructType::create(Ctx, "struct.uvmMallocInfo");
+      UVMMemInfoTy->setBody(PointerType::get(Type::getInt8Ty(Ctx), 0), Type::getInt64Ty(Ctx), PointerType::get(Type::getInt8Ty(Ctx), 0), Type::getInt8Ty(Ctx), NULL);
+      auto *UVMMemInfoPTy = PointerType::get(UVMMemInfoTy, 0);
+      Constant* uvmMallocFunc = M.getOrInsertFunction("__uvm_malloc", Type::getVoidTy(Ctx), UVMMemInfoPTy, NULL);
+      Constant* uvmMemcpyFunc = M.getOrInsertFunction("__uvm_memcpy", Type::getVoidTy(Ctx), UVMMemInfoPTy, NULL);
+      Constant* uvmFreeFunc = M.getOrInsertFunction("__uvm_free", Type::getVoidTy(Ctx), UVMMemInfoPTy, NULL);
+      SmallVector<Instruction*, 8> InstsToDelete;
+
       for (auto &DME : Info->DataMap) {
         DataEntry *DE = DME.second;
         if (!DE->free) {
@@ -272,6 +280,38 @@ namespace {
           Succeeded = false;
           break;
         }
+
+        // Change memory allocation api calls:
+        // replace cudaMallocManaged with __uvm_malloc
+        auto *AllocInst = dyn_cast<CallInst>(DE->alloc);
+        assert(AllocInst);
+        auto *AllocPtr = AllocInst->getArgOperand(0);
+        auto *AllocSize = AllocInst->getArgOperand(1);
+        IRBuilder<> builder(AllocInst);
+        auto *AI = builder.CreateAlloca(UVMMemInfoTy);
+        ConstantInt *Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 1, false);
+        auto *GEPI = builder.CreateGEP(AI, Offset);
+        auto *SI = builder.CreateStore(AllocSize, GEPI);
+        // Insert __uvm_malloc
+        Value* args[] = {AI};
+        auto *UVMMallocCI = builder.CreateCall(uvmMallocFunc, args);
+        Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 2, false);
+        auto *HostGEPI = builder.CreateGEP(AI, Offset);
+        // Replace usage
+        for (auto &U : DE->base_ptr->uses()) {
+          User* user = U.getUser();
+          user->setOperand(U.getOperandNo(), HostGEPI);
+        }
+        errs() << "Info: reallocate ";
+        AllocInst->dump();
+        errs() << "            with ";
+        UVMMallocCI->dump();
+        InstsToDelete.push_back(AllocInst);
+        Changed = true;
+
+        // Insert memory copy api calls
+
+        // Change memory free api calls
       }
 
       if (!Succeeded) {
@@ -279,7 +319,8 @@ namespace {
         return false;
       }
 
-      bool Changed = false;
+      //for (auto *I : InstsToDelete)
+      //  I->eraseFromParent();
       return Changed;
     }
 

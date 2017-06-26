@@ -356,7 +356,7 @@ namespace {
                 // Load the pointer of allocated space
                 auto *LI = builder.CreateLoad(PointerType::get((Type::getInt8Ty(Ctx)), 0), BCI);
                 // Remove malloc
-                for(auto& U : CI->uses()) {
+                for (auto &U : CI->uses()) {
                   User* user = U.getUser();
                   user->setOperand(U.getOperandNo(), LI);
                 }

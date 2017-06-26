@@ -27,8 +27,8 @@ int main()
 
     __uvm_malloc(&a_info);
     __uvm_malloc(&b_info);
-    d_a = (int*)a_info.devPtr;
-    d_b = (int*)b_info.devPtr;
+    d_a = (int*)a_info.hostPtr;
+    d_b = (int*)b_info.hostPtr;
 
     for(i = 0; i < size; i++) {
         d_a[i] = rand() % 100;
