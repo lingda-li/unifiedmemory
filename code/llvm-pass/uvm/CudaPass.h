@@ -24,6 +24,7 @@ public:
   Instruction *alloc;
   SmallVector<Instruction*, 2> send2kernel;
   SmallVector<Instruction*, 2> kernel;
+  Instruction *free;
 
   DataEntry(Value *in_base_ptr, unsigned in_type, Value *in_size) {
     base_ptr = in_base_ptr;
@@ -35,6 +36,7 @@ public:
     reallocated_base_ptr = NULL;
     keep_me = false;
     alloc = NULL;
+    free = NULL;
   }
 };
 

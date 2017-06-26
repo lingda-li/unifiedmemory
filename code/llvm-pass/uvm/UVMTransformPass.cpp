@@ -47,6 +47,7 @@ namespace {
                       errs() << "new entry ";
                       BasePtr->dump();
                       DataEntry *data_entry = new DataEntry(BasePtr, 2, CI->getArgOperand(1)); // managed space
+                      data_entry->alloc = CI;
                       Info->DataMap.insert(std::make_pair(BasePtr, data_entry));
                     } else
                       errs() << "Error: redundant allocation?\n";
@@ -58,6 +59,7 @@ namespace {
                     errs() << "new entry ";
                     BasePtr->dump();
                     DataEntry *data_entry = new DataEntry(BasePtr, 2, CI->getArgOperand(1)); // managed space
+                    data_entry->alloc = CI;
                     Info->DataMap.insert(std::make_pair(BasePtr, data_entry));
                   } else
                     errs() << "Error: redundant allocation?\n";
@@ -240,7 +242,7 @@ namespace {
                     }
                     NextInst = NextInst->getNextNode();
                     if (!NextInst) {
-                      CBB = CBB->getNextNode();
+                      CBB = CBB->getNextNode(); // FIXME: go to the successor block
                       if (!CBB)
                         break;
                       NextInst = &(*CBB->begin());
@@ -251,6 +253,14 @@ namespace {
                     Succeeded = false;
                   }
                 }
+              } else if (Callee && Callee->getName() == "cudaFree") {
+                auto *FreePtr = CI->getArgOperand(0);
+                DataEntry *data_entry = Info->getAliasEntry(FreePtr);
+                assert(data_entry);
+                assert(!data_entry->free);
+                data_entry->free = CI;
+                errs() << "Info: find free of ";
+                data_entry->base_ptr->dump();
               }
             }
           }
