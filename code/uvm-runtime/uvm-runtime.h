@@ -1,3 +1,7 @@
+#ifndef UVM_RUNTIME_H
+#define UVM_RUNTIME_H
+
+extern "C" {
 struct uvmMallocInfo {
   void* devPtr;
   size_t size;
@@ -5,6 +9,9 @@ struct uvmMallocInfo {
   bool isSame;
 };
 
-void uvmMalloc(struct uvmMallocInfo* uvmInfo);
-void uvmFree(struct uvmMallocInfo* uvmInfo);
-void uvmMemcpy(struct uvmMallocInfo* uvmInfo, cudaMemcpyKind kind);
+extern void __uvm_malloc(struct uvmMallocInfo* uvmInfo);
+extern void __uvm_free(struct uvmMallocInfo* uvmInfo);
+extern void __uvm_memcpy(struct uvmMallocInfo* uvmInfo, cudaMemcpyKind kind);
+}
+
+#endif

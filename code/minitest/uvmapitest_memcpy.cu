@@ -33,8 +33,8 @@ int main()
     b_info.size = size*sizeof(int);
     DEBUG_PRINT
 
-    uvmMalloc(&a_info);
-    uvmMalloc(&b_info);
+    __uvm_malloc(&a_info);
+    __uvm_malloc(&b_info);
     DEBUG_PRINT
 
     d_a = (int*)a_info.devPtr;
@@ -48,20 +48,20 @@ int main()
     }
     DEBUG_PRINT
 
-    uvmMemcpy(&a_info, cudaMemcpyHostToDevice);
+    __uvm_memcpy(&a_info, cudaMemcpyHostToDevice);
     DEBUG_PRINT
 
     MyKernel<<<BlockNum, BlockSize>>>(d_a, d_b, size);
 
-    uvmMemcpy(&b_info, cudaMemcpyDeviceToHost);
+    __uvm_memcpy(&b_info, cudaMemcpyDeviceToHost);
     DEBUG_PRINT
 
     for(i = 0; i < size; i++)
         sum_b += h_b[i];
     DEBUG_PRINT
 
-    uvmFree(&a_info);
-    uvmFree(&b_info);
+    __uvm_free(&a_info);
+    __uvm_free(&b_info);
     DEBUG_PRINT
 
     printf("sum_a: %d, sum_b: %d\n", sum_a, sum_b);

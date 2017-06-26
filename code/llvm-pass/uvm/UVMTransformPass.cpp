@@ -253,7 +253,7 @@ namespace {
                 assert(data_entry);
                 assert(!data_entry->free);
                 data_entry->free = CI;
-                errs() << "Info: find free of ";
+                errs() << "Info: find free for ";
                 data_entry->base_ptr->dump();
               }
             }
@@ -261,15 +261,23 @@ namespace {
         }
       }
 
+      // Change memory allocation api calls
+      // Insert memory copy api calls
+      // Change memory free api calls
+      for (auto &DME : Info->DataMap) {
+        DataEntry *DE = DME.second;
+        if (!DE->free) {
+          errs() << "Error: didn't find free for ";
+          DE->base_ptr->dump();
+          Succeeded = false;
+          break;
+        }
+      }
+
       if (!Succeeded) {
         errs() << "Info: didn't perform transformation because data analysis fails\n";
         return false;
       }
-
-      // Change memory allocation api calls
-      //for (auto & : Info->DataMap)
-      // Insert memory copy api calls
-      // Change memory free api calls
 
       bool Changed = false;
       return Changed;

@@ -25,8 +25,8 @@ int main()
     a_info.size = size*sizeof(int);
     b_info.size = size*sizeof(int);
 
-    uvmMalloc(&a_info);
-    uvmMalloc(&b_info);
+    __uvm_malloc(&a_info);
+    __uvm_malloc(&b_info);
     d_a = (int*)a_info.devPtr;
     d_b = (int*)b_info.devPtr;
 
@@ -42,8 +42,8 @@ int main()
     for(i = 0; i < size; i++)
         sum_b += d_b[i];
 
-    uvmFree(&a_info);
-    uvmFree(&b_info);
+    __uvm_free(&a_info);
+    __uvm_free(&b_info);
 
     printf("sum_a: %d, sum_b: %d\n", sum_a, sum_b);
 

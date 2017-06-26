@@ -3,7 +3,7 @@
 #define ALL_MANAGED
 #define GPU_PRE_PASCAL
 
-void uvmMalloc(struct uvmMallocInfo* uvmInfo)
+void __uvm_malloc(struct uvmMallocInfo* uvmInfo)
 {
   size_t size = uvmInfo->size;
 
@@ -18,14 +18,14 @@ void uvmMalloc(struct uvmMallocInfo* uvmInfo)
 #endif
 }
 
-void uvmFree(struct uvmMallocInfo* uvmInfo)
+void __uvm_free(struct uvmMallocInfo* uvmInfo)
 {
   cudaFree(uvmInfo->devPtr);
   if (!uvmInfo->isSame)
     free(uvmInfo->hostPtr);
 }
 
-void uvmMemcpy(struct uvmMallocInfo* uvmInfo, cudaMemcpyKind kind)
+void __uvm_memcpy(struct uvmMallocInfo* uvmInfo, cudaMemcpyKind kind)
 {
   if (uvmInfo->isSame) {
 #ifdef GPU_PRE_PASCAL
