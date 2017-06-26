@@ -43,7 +43,7 @@ namespace {
                   Value *BasePtr = BCI->getOperand(0);
                   if (auto *AI = dyn_cast<AllocaInst>(BasePtr)) {
                     Value *BasePtr = AI;
-                    if (Info->DataMap.find(BasePtr) == Info->DataMap.end()) {
+                    if (Info->getBaseAliasEntry(BasePtr) == NULL) {
                       errs() << "new entry ";
                       BasePtr->dump();
                       DataEntry *data_entry = new DataEntry(BasePtr, 2, CI->getArgOperand(1)); // managed space
@@ -55,7 +55,7 @@ namespace {
                     DEBUG_PRINT
                 } else if (auto *AI = dyn_cast<AllocaInst>(AllocPtr)) {
                   Value *BasePtr = AI;
-                  if (Info->DataMap.find(BasePtr) == Info->DataMap.end()) {
+                  if (Info->getBaseAliasEntry(BasePtr) == NULL) {
                     errs() << "new entry ";
                     BasePtr->dump();
                     DataEntry *data_entry = new DataEntry(BasePtr, 2, CI->getArgOperand(1)); // managed space
@@ -108,8 +108,10 @@ namespace {
                 }
                 if (DataEntry *InsertEntry = Info->getBaseAliasEntry(StoreAddr)) {
                   DataEntry *InsertEntry2 = Info->getAliasEntry(StoreContent);
-                  if (InsertEntry != InsertEntry2)
+                  if (InsertEntry != InsertEntry2) {
                     errs() << "Warning: store a different alias pointer to a base pointer\n";
+                    Succeeded = false;
+                  }
                 }
               } else if (auto *BCI = dyn_cast<BitCastInst>(&I)) {
                 Value *CastSource = BCI->getOperand(0);
@@ -122,14 +124,6 @@ namespace {
                   }
                 }
                 if (auto *SourceEntry = Info->getBaseAliasEntry(CastSource)) {
-                  if (Info->tryInsertBaseAliasEntry(SourceEntry, BCI)) {
-                    errs() << "  base alias entry ";
-                    BCI->dump();
-                    NumAlias++;
-                  }
-                }
-                if (Info->DataMap.find(CastSource) != Info->DataMap.end()) {
-                  auto *SourceEntry = Info->DataMap.find(CastSource)->second;
                   if (Info->tryInsertBaseAliasEntry(SourceEntry, BCI)) {
                     errs() << "  base alias entry ";
                     BCI->dump();
@@ -267,10 +261,13 @@ namespace {
         }
       }
 
-      if (!Succeeded)
+      if (!Succeeded) {
+        errs() << "Info: didn't perform transformation because data analysis fails\n";
         return false;
+      }
 
       // Change memory allocation api calls
+      //for (auto & : Info->DataMap)
       // Insert memory copy api calls
       // Change memory free api calls
 
