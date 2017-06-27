@@ -1,0 +1,8 @@
+*.o
+*.so
+*.ll
+*.bc
+
+core.*
+
+code/llvm-pass/build
