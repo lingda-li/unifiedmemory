@@ -48,6 +48,8 @@ namespace {
                       BasePtr->dump();
                       DataEntry *data_entry = new DataEntry(BasePtr, 2, CI->getArgOperand(1)); // managed space
                       data_entry->alloc = CI;
+                      FuncInfoEntry *FIE = new FuncInfoEntry(&F);
+                      data_entry->func_map.insert(std::make_pair(&F, FIE));
                       Info->DataMap.insert(std::make_pair(BasePtr, data_entry));
                     } else
                       errs() << "Error: redundant allocation?\n";
@@ -268,7 +270,7 @@ namespace {
       UVMMemInfoTy->setBody(PointerType::get(Type::getInt8Ty(Ctx), 0), Type::getInt64Ty(Ctx), PointerType::get(Type::getInt8Ty(Ctx), 0), Type::getInt8Ty(Ctx), NULL);
       auto *UVMMemInfoPTy = PointerType::get(UVMMemInfoTy, 0);
       Constant* uvmMallocFunc = M.getOrInsertFunction("__uvm_malloc", Type::getVoidTy(Ctx), UVMMemInfoPTy, NULL);
-      Constant* uvmMemcpyFunc = M.getOrInsertFunction("__uvm_memcpy", Type::getVoidTy(Ctx), UVMMemInfoPTy, NULL);
+      Constant* uvmMemcpyFunc = M.getOrInsertFunction("__uvm_memcpy", Type::getVoidTy(Ctx), UVMMemInfoPTy, Type::getInt32Ty(Ctx), NULL);
       Constant* uvmFreeFunc = M.getOrInsertFunction("__uvm_free", Type::getVoidTy(Ctx), UVMMemInfoPTy, NULL);
       SmallVector<Instruction*, 8> InstsToDelete;
 
@@ -283,35 +285,89 @@ namespace {
 
         // Change memory allocation api calls:
         // replace cudaMallocManaged with __uvm_malloc
-        auto *AllocInst = dyn_cast<CallInst>(DE->alloc);
-        assert(AllocInst);
-        auto *AllocPtr = AllocInst->getArgOperand(0);
-        auto *AllocSize = AllocInst->getArgOperand(1);
-        IRBuilder<> builder(AllocInst);
-        auto *AI = builder.CreateAlloca(UVMMemInfoTy);
-        ConstantInt *Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 1, false);
-        auto *GEPI = builder.CreateGEP(AI, Offset);
-        auto *SI = builder.CreateStore(AllocSize, GEPI);
-        // Insert __uvm_malloc
-        Value* args[] = {AI};
-        auto *UVMMallocCI = builder.CreateCall(uvmMallocFunc, args);
-        Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 2, false);
-        auto *HostGEPI = builder.CreateGEP(AI, Offset);
-        // Replace usage
-        for (auto &U : DE->base_ptr->uses()) {
-          User* user = U.getUser();
-          user->setOperand(U.getOperandNo(), HostGEPI);
+        Value *AI; // uvmMallocInfo allocated instruction
+        {
+          auto *AllocInst = dyn_cast<CallInst>(DE->alloc);
+          assert(AllocInst);
+          auto *BaseInst = dyn_cast<Instruction>(DE->base_ptr);
+          assert(BaseInst);
+          auto *AllocPtr = AllocInst->getArgOperand(0);
+          auto *AllocSize = AllocInst->getArgOperand(1);
+          IRBuilder<> builder(AllocInst);
+          AI = builder.CreateAlloca(UVMMemInfoTy);
+          ConstantInt *Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 1, false);
+          Value *IndexList[2] = {ConstantInt::get(Type::getInt64Ty(Ctx), 0, false), Offset};
+          auto *SizeGEPI = builder.CreateGEP(AI, ArrayRef<Value*>(IndexList, 2));
+          auto *SI = builder.CreateStore(AllocSize, SizeGEPI);
+          // Insert __uvm_malloc
+          Value* args[] = {AI};
+          auto *UVMMallocCI = builder.CreateCall(uvmMallocFunc, args);
+          Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 2, false);
+          Value *IndexList2[2] = {ConstantInt::get(Type::getInt64Ty(Ctx), 0, false), Offset};
+          auto *HostGEPI = builder.CreateGEP(AI, ArrayRef<Value*>(IndexList2, 2));
+          Value *HostBCI;
+          if (HostGEPI->getType() != BaseInst->getType())
+            HostBCI = builder.CreateBitCast(HostGEPI, BaseInst->getType());
+          else
+            HostBCI = HostGEPI;
+          // Replace usage
+          SmallVector<User*, 6> Users;
+          SmallVector<unsigned, 6> UsersNo;
+          for (auto &U : BaseInst->uses()) {
+            User* user = U.getUser();
+            Users.push_back(user);
+            UsersNo.push_back(U.getOperandNo());
+          }
+          while (!Users.empty()) {
+            User* user = Users.back();
+            user->setOperand(UsersNo.back(), HostBCI);
+            Users.pop_back();
+            UsersNo.pop_back();
+          }
+          Function *CurFunc = AllocInst->getParent()->getParent();
+          assert(DE->func_map.find(CurFunc) != DE->func_map.end());
+          DE->func_map.find(CurFunc)->second->addLocalCopy(AI);
+          errs() << "Info: reallocate ";
+          AllocInst->dump();
+          errs() << "            with ";
+          UVMMallocCI->dump();
+          InstsToDelete.push_back(AllocInst);
         }
-        errs() << "Info: reallocate ";
-        AllocInst->dump();
-        errs() << "            with ";
-        UVMMallocCI->dump();
-        InstsToDelete.push_back(AllocInst);
-        Changed = true;
 
         // Insert memory copy api calls
+        {
+          // Insert host2device __uvm_memcpy
+          for (auto *SACI : DE->send2kernel) {
+            IRBuilder<> builder(SACI);
+            ConstantInt *Direction = ConstantInt::get(Type::getInt32Ty(Ctx), 1, false);
+            Value* args[] = {AI, Direction};
+            auto *UVMMemcpyCI = builder.CreateCall(uvmMemcpyFunc, args);
+          }
+
+          // Insert device2host __uvm_memcpy
+          for (auto *KCI : DE->kernel) {
+            auto *InsertPoint = KCI->getNextNode();
+            assert(InsertPoint);
+            IRBuilder<> builder(InsertPoint);
+            ConstantInt *Direction = ConstantInt::get(Type::getInt32Ty(Ctx), 2, false);
+            Value* args[] = {AI, Direction};
+            auto *UVMMemcpyCI = builder.CreateCall(uvmMemcpyFunc, args);
+          }
+        }
 
         // Change memory free api calls
+        {
+          auto *FreeInst = dyn_cast<CallInst>(DE->free);
+          assert(FreeInst);
+          // Insert __uvm_free
+          IRBuilder<> builder(FreeInst);
+          Value* args[] = {AI};
+          auto *UVMFreeCI = builder.CreateCall(uvmFreeFunc, args);
+          InstsToDelete.push_back(FreeInst);
+        }
+
+        // Change device reference
+        Changed = true;
       }
 
       if (!Succeeded) {
@@ -319,8 +375,8 @@ namespace {
         return false;
       }
 
-      //for (auto *I : InstsToDelete)
-      //  I->eraseFromParent();
+      for (auto *I : InstsToDelete)
+        I->eraseFromParent();
       return Changed;
     }
 

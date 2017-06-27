@@ -199,10 +199,10 @@ namespace {
                 ConstantInt* DCI = dyn_cast<ConstantInt>(CI->getArgOperand(3));
                 assert(DCI);
                 auto direction = DCI->getValue();
-                if (direction == 1) {
+                if (direction == 1) { // Host to device
                   HostData = CI->getArgOperand(1);
                   DeviceData = CI->getArgOperand(0);
-                } else if (direction == 2) {
+                } else if (direction == 2) { // Device to host
                   HostData = CI->getArgOperand(0);
                   DeviceData = CI->getArgOperand(1);
                 }
