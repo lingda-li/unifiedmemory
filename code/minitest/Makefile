@@ -14,8 +14,8 @@ test: test_m.cu
 	clang $(COMPILE_FLAG) $(IR_FLAG) $(PASS_FLAG) test_m.cu
 
 managed: test_m.cu
-	clang $(COMPILE_FLAG) $(IR_FLAG) test_m.cu
-	clang $(COMPILE_FLAG) $(LINK_FLAG) test_m.cu -o test_m
+	clang $(COMPILE_FLAG) $(PASS_FLAG) $(IR_FLAG) test_m.cu
+	clang $(COMPILE_FLAG) $(PASS_FLAG) $(LINK_FLAG) test_m.cu -o test_m
 
 uvmapi: uvmapitest.cu uvmapitest_memcpy.cu
 	clang $(COMPILE_FLAG) $(LINK_FLAG) uvmapitest.cu -o uvmapitest
