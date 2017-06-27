@@ -173,6 +173,8 @@ namespace {
                     assert(argcount == i);
                     if (AliasTy == 1) {
                       if (Info->tryInsertAliasEntry(SourceEntry, &(*A))) {
+                        FuncInfoEntry *FIE = new FuncInfoEntry(Callee, &(*A), OPD);
+                        //SourceEntry->in
                         errs() << "  alias entry (func arg) ";
                         A->dump();
                       }

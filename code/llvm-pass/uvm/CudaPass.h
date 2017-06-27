@@ -17,6 +17,8 @@ class FuncInfoEntry {
     Value *local_copy = NULL;
 
     FuncInfoEntry(Function *in_func) : func(in_func) {}
+    FuncInfoEntry(Function *in_func, Value *in_arg, Value *in_arg_value) : func(in_func), arg(in_arg), arg_value(in_arg_value) {}
+
     void addLocalCopy(Value *in_local_copy) {
       assert(!local_copy);
       local_copy = in_local_copy;
