@@ -8,6 +8,7 @@
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "CudaPass.h"
+#include "llvm/ADT/SmallSet.h"
 using namespace llvm;
 
 #define DEBUG_PRINT {errs() << "Error: "<< __LINE__ << "\n";}
@@ -50,6 +51,7 @@ namespace {
                       data_entry->alloc = CI;
                       FuncInfoEntry *FIE = new FuncInfoEntry(&F);
                       data_entry->func_map.insert(std::make_pair(&F, FIE));
+                      data_entry->insertFuncInfoEntry(FIE);
                       Info->DataMap.insert(std::make_pair(BasePtr, data_entry));
                     } else
                       errs() << "Error: redundant allocation?\n";
@@ -76,6 +78,8 @@ namespace {
       // Find all pointers to allocated space
       // Iterate until no new functions that are discovered
       SmallVector<Function*, 8> Funcs;
+      SmallVector<std::pair<Value*, Function*>, 4> ArgsByVal;
+      SmallVector<std::pair<Value*, Function*>, 4> ArgsByRef;
       for (Function &F : M) {
         if (F.isDeclaration())
           continue;
@@ -83,8 +87,8 @@ namespace {
       }
 
       unsigned NumRounds = 0;
+      SmallVector<Function*, 4> AddedFuncs;
       while (!Funcs.empty()) {
-        SmallVector<Function*, 4> AddedFuncs;
         errs() << "Round " << NumRounds << "\n";
         for (Function *FP : Funcs) {
           auto &F = *FP;
@@ -173,13 +177,25 @@ namespace {
                     assert(argcount == i);
                     if (AliasTy == 1) {
                       if (Info->tryInsertAliasEntry(SourceEntry, &(*A))) {
-                        FuncInfoEntry *FIE = new FuncInfoEntry(Callee, &(*A), OPD);
-                        //SourceEntry->in
+                        assert(SourceEntry->func_map.find(Callee) == SourceEntry->func_map.end());
+                        FuncInfoEntry *FIE = new FuncInfoEntry(Callee, CI, &(*A), OPD, 1);
+                        SourceEntry->insertFuncInfoEntry(FIE);
+                        Function *PF = CI->getParent()->getParent();
+                        assert(SourceEntry->func_map.find(PF) != SourceEntry->func_map.end());
+                        FIE->setParent(SourceEntry->func_map.find(PF)->second);
+                        ArgsByVal.push_back(std::make_pair(&(*A), Callee));
                         errs() << "  alias entry (func arg) ";
                         A->dump();
                       }
                     } else {
                       if (Info->tryInsertBaseAliasEntry(SourceEntry, &(*A))) {
+                        assert(SourceEntry->func_map.find(Callee) == SourceEntry->func_map.end());
+                        FuncInfoEntry *FIE = new FuncInfoEntry(Callee, CI, &(*A), OPD, 2);
+                        SourceEntry->insertFuncInfoEntry(FIE);
+                        Function *PF = CI->getParent()->getParent();
+                        assert(SourceEntry->func_map.find(PF) != SourceEntry->func_map.end());
+                        FIE->setParent(SourceEntry->func_map.find(PF)->second);
+                        ArgsByRef.push_back(std::make_pair(&(*A), Callee));
                         errs() << "  base alias entry (func arg) ";
                         A->dump();
                       }
@@ -265,7 +281,6 @@ namespace {
         }
       }
 
-      // Transform CUDA APIs to UVM runtime APIs
       bool Changed = false;
       LLVMContext& Ctx = M.getContext();
       auto UVMMemInfoTy = StructType::create(Ctx, "struct.uvmMallocInfo");
@@ -276,6 +291,7 @@ namespace {
       Constant* uvmFreeFunc = M.getOrInsertFunction("__uvm_free", Type::getVoidTy(Ctx), UVMMemInfoPTy, NULL);
       SmallVector<Instruction*, 8> InstsToDelete;
 
+      // Allocate initial UVM runtime data structures
       for (auto &DME : Info->DataMap) {
         DataEntry *DE = DME.second;
         if (!DE->free) {
@@ -287,59 +303,137 @@ namespace {
 
         // Change memory allocation api calls:
         // replace cudaMallocManaged with __uvm_malloc
-        Value *AI; // uvmMallocInfo allocated instruction
-        {
-          auto *AllocInst = dyn_cast<CallInst>(DE->alloc);
-          assert(AllocInst);
-          auto *BaseInst = dyn_cast<Instruction>(DE->base_ptr);
-          assert(BaseInst);
-          auto *AllocPtr = AllocInst->getArgOperand(0);
-          auto *AllocSize = AllocInst->getArgOperand(1);
-          IRBuilder<> builder(AllocInst);
-          AI = builder.CreateAlloca(UVMMemInfoTy);
-          ConstantInt *Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 1, false);
-          Value *IndexList[2] = {ConstantInt::get(Type::getInt64Ty(Ctx), 0, false), Offset};
-          auto *SizeGEPI = builder.CreateGEP(AI, ArrayRef<Value*>(IndexList, 2));
-          auto *SI = builder.CreateStore(AllocSize, SizeGEPI);
-          // Insert __uvm_malloc
-          Value* args[] = {AI};
-          auto *UVMMallocCI = builder.CreateCall(uvmMallocFunc, args);
-          Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 2, false);
-          Value *IndexList2[2] = {ConstantInt::get(Type::getInt64Ty(Ctx), 0, false), Offset};
-          auto *HostGEPI = builder.CreateGEP(AI, ArrayRef<Value*>(IndexList2, 2));
-          Value *HostBCI;
-          if (HostGEPI->getType() != BaseInst->getType())
-            HostBCI = builder.CreateBitCast(HostGEPI, BaseInst->getType());
-          else
-            HostBCI = HostGEPI;
-          // Replace usage
-          SmallVector<User*, 6> Users;
-          SmallVector<unsigned, 6> UsersNo;
-          for (auto &U : BaseInst->uses()) {
-            User* user = U.getUser();
-            Users.push_back(user);
-            UsersNo.push_back(U.getOperandNo());
-          }
-          while (!Users.empty()) {
-            User* user = Users.back();
-            user->setOperand(UsersNo.back(), HostBCI);
-            Users.pop_back();
-            UsersNo.pop_back();
-          }
-          Function *CurFunc = AllocInst->getParent()->getParent();
-          assert(DE->func_map.find(CurFunc) != DE->func_map.end());
-          DE->func_map.find(CurFunc)->second->addLocalCopy(AI);
-          errs() << "Info: reallocate ";
-          AllocInst->dump();
-          errs() << "            with ";
-          UVMMallocCI->dump();
-          InstsToDelete.push_back(AllocInst);
+        auto *AllocInst = dyn_cast<CallInst>(DE->alloc);
+        assert(AllocInst);
+        auto *BaseInst = dyn_cast<Instruction>(DE->base_ptr);
+        assert(BaseInst);
+        auto *AllocPtr = AllocInst->getArgOperand(0);
+        auto *AllocSize = AllocInst->getArgOperand(1);
+        IRBuilder<> builder(AllocInst);
+        Value *AI = builder.CreateAlloca(UVMMemInfoTy); // uvmMallocInfo allocated instruction
+        ConstantInt *Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 1, false);
+        Value *IndexList[2] = {ConstantInt::get(Type::getInt64Ty(Ctx), 0, false), Offset};
+        auto *SizeGEPI = builder.CreateGEP(AI, ArrayRef<Value*>(IndexList, 2));
+        auto *SI = builder.CreateStore(AllocSize, SizeGEPI);
+        // Insert __uvm_malloc
+        Value* args[] = {AI};
+        auto *UVMMallocCI = builder.CreateCall(uvmMallocFunc, args);
+        Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 2, false);
+        Value *IndexList2[2] = {ConstantInt::get(Type::getInt64Ty(Ctx), 0, false), Offset};
+        auto *HostGEPI = builder.CreateGEP(AI, ArrayRef<Value*>(IndexList2, 2));
+        Value *HostBCI;
+        if (HostGEPI->getType() != BaseInst->getType())
+          HostBCI = builder.CreateBitCast(HostGEPI, BaseInst->getType());
+        else
+          HostBCI = HostGEPI;
+        // Replace usage
+        SmallVector<User*, 6> Users;
+        SmallVector<unsigned, 6> UsersNo;
+        for (auto &U : BaseInst->uses()) {
+          User* user = U.getUser();
+          Users.push_back(user);
+          UsersNo.push_back(U.getOperandNo());
         }
+        while (!Users.empty()) {
+          User* user = Users.back();
+          user->setOperand(UsersNo.back(), HostBCI);
+          Users.pop_back();
+          UsersNo.pop_back();
+        }
+        Function *CurFunc = AllocInst->getParent()->getParent();
+        assert(DE->func_map.find(CurFunc) != DE->func_map.end());
+        DE->func_map.find(CurFunc)->second->setLocalCopy(AI);
+        errs() << "Info: reallocate ";
+        AllocInst->dump();
+        errs() << "            with ";
+        UVMMallocCI->dump();
+        InstsToDelete.push_back(AllocInst);
+      }
+
+      if (!Succeeded) {
+        errs() << "Info: didn't perform transformation because data analysis fails\n";
+        return false;
+      }
+
+      // Transform all functions that need GPU memory 
+      // FIXME: potentially transform more functions than needed
+      for (auto &IT : ArgsByVal) {
+        // Change the argument to pass by refernce instead of by value
+        Value *A = IT.first;
+        Function *F = IT.second;
+        // Find the call instructions
+      }
+
+      for (auto &IT : ArgsByRef) {
+        Value *A = IT.first;
+        Function *F = IT.second;
+      }
+
+      // Transform CUDA APIs to UVM runtime APIs
+      for (auto &DME : Info->DataMap) {
+        DataEntry *DE = DME.second;
+        /*
+        // Figure out local copies for all callees
+        {
+          FuncInfoEntry *RootFIE = *DE->func_stack.begin();
+          Value *RootCopy = RootFIE->local_copy;
+          assert(RootFIE->parent == NULL);
+          for (FuncInfoEntry *FIE : DE->func_stack) {
+            Function *F = FIE->func;
+            FuncInfoEntry *PFIE = FIE->parent;
+            if (PFIE == NULL) {
+              assert(FIE->local_copy);
+              continue;
+            } else {
+              //Function *PF = FIE-parent->func;
+              if (PFIE->local_copy == NULL) {
+                errs() << "Error: parent didn't have a local copy\n";
+                continue;
+              }
+              assert(!FIE->local_copy);
+            }
+
+            // Get the defination chain
+            Value *ParentCopy = PFIE->local_copy;
+            Value *CurPoint = FIE->arg_value;
+            while (CurPoint != ParentCopy) {
+              if (auto *BCI = dyn_cast<BitCastInst>(CurPoint)) {
+                BCI->dump();
+                CurPoint = BCI->getOperand(0);
+              } else if (auto *LI = dyn_cast<LoadInst>(CurPoint)) {
+                if (FIE->type == 2) {
+                  errs() << "Error: load instruction should not be here ";
+                  LI->dump();
+                  break;
+                }
+                LI->dump();
+                CurPoint = LI->getOperand(0);
+              } else if (auto *GEPI = dyn_cast<GetElementPtrInst>(CurPoint)) {
+                GEPI->dump();
+                CurPoint = GEPI->getOperand(0);
+              } else {
+                errs() << "Error: this instruction should not be here ";
+                CurPoint->dump();
+                break;
+              }
+            }
+          }
+        }
+        */
 
         // Insert memory copy api calls
         {
           // Insert host2device __uvm_memcpy
           for (auto *SACI : DE->send2kernel) {
+            Function *CurFunc = SACI->getParent()->getParent();
+            auto FuncMapIt = DE->func_map.find(CurFunc);
+            assert(FuncMapIt != DE->func_map.end());
+            Value *AI = FuncMapIt->second->local_copy;
+            if (!AI) {
+              errs() << "Error: " << CurFunc->getName() << " didn't have a local copy for ";
+              DE->base_ptr->dump();
+              continue;
+            }
             IRBuilder<> builder(SACI);
             ConstantInt *Direction = ConstantInt::get(Type::getInt32Ty(Ctx), 1, false);
             Value* args[] = {AI, Direction};
@@ -348,6 +442,15 @@ namespace {
 
           // Insert device2host __uvm_memcpy
           for (auto *KCI : DE->kernel) {
+            Function *CurFunc = KCI->getParent()->getParent();
+            auto FuncMapIt = DE->func_map.find(CurFunc);
+            assert(FuncMapIt != DE->func_map.end());
+            Value *AI = FuncMapIt->second->local_copy;
+            if (!AI) {
+              errs() << "Error: " << CurFunc->getName() << " didn't have a local copy for ";
+              DE->base_ptr->dump();
+              continue;
+            }
             auto *InsertPoint = KCI->getNextNode();
             assert(InsertPoint);
             IRBuilder<> builder(InsertPoint);
@@ -361,20 +464,26 @@ namespace {
         {
           auto *FreeInst = dyn_cast<CallInst>(DE->free);
           assert(FreeInst);
+          Function *CurFunc = FreeInst->getParent()->getParent();
+          auto FuncMapIt = DE->func_map.find(CurFunc);
+          assert(FuncMapIt != DE->func_map.end());
+          Value *AI = FuncMapIt->second->local_copy;
+          if (!AI) {
+            errs() << "Error: " << CurFunc->getName() << " didn't have a local copy for ";
+            DE->base_ptr->dump();
+            continue;
+          }
           // Insert __uvm_free
           IRBuilder<> builder(FreeInst);
           Value* args[] = {AI};
           auto *UVMFreeCI = builder.CreateCall(uvmFreeFunc, args);
           InstsToDelete.push_back(FreeInst);
+          errs() << "  free is added for ";
+          DE->base_ptr->dump();
         }
 
         // Change device reference
         Changed = true;
-      }
-
-      if (!Succeeded) {
-        errs() << "Info: didn't perform transformation because data analysis fails\n";
-        return false;
       }
 
       for (auto *I : InstsToDelete)

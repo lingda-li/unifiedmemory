@@ -15,11 +15,19 @@ class FuncInfoEntry {
     Value *arg;
     Value *arg_value;
     Value *local_copy = NULL;
+    unsigned type; // 1: alias, 2: base alias
+    FuncInfoEntry *parent;
 
-    FuncInfoEntry(Function *in_func) : func(in_func) {}
-    FuncInfoEntry(Function *in_func, Value *in_arg, Value *in_arg_value) : func(in_func), arg(in_arg), arg_value(in_arg_value) {}
+    FuncInfoEntry(Function *in_func) : func(in_func), parent(NULL) {}
+    FuncInfoEntry(Function *in_func, CallInst *in_call_inst, Value *in_arg, Value *in_arg_value, unsigned in_type) : func(in_func), call_point(in_call_inst), arg(in_arg), arg_value(in_arg_value), type(in_type) {
+      assert(type >= 1 && type <= 2);
+    }
 
-    void addLocalCopy(Value *in_local_copy) {
+    void setParent(FuncInfoEntry *in_parent) {
+      parent = in_parent;
+    }
+
+    void setLocalCopy(Value *in_local_copy) {
       assert(!local_copy);
       local_copy = in_local_copy;
     }
@@ -45,6 +53,7 @@ class DataEntry {
     Instruction *free;
   
     DenseMap<Function*, FuncInfoEntry*> func_map; // keep uvmMallocInfo copies for each function involved
+    SmallVector<FuncInfoEntry*, 2> func_stack; // a stack version of above
   
     DataEntry(Value *in_base_ptr, unsigned in_type, Value *in_size) {
       base_ptr = in_base_ptr;
@@ -57,6 +66,12 @@ class DataEntry {
       keep_me = false;
       alloc = NULL;
       free = NULL;
+    }
+
+    void insertFuncInfoEntry(FuncInfoEntry *in_fie) {
+      Function *F = in_fie->func;
+      func_map.insert(std::make_pair(F, in_fie));
+      func_stack.push_back(in_fie);
     }
 };
 

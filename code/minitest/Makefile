@@ -24,3 +24,6 @@ uvmapi: uvmapitest.cu uvmapitest_memcpy.cu
 uvmapiir: uvmapitest.cu uvmapitest_memcpy.cu
 	clang $(COMPILE_FLAG) $(IR_FLAG) uvmapitest.cu
 	clang $(COMPILE_FLAG) $(IR_FLAG) uvmapitest_memcpy.cu
+
+clean:
+	rm core.* *.bc *.ll
