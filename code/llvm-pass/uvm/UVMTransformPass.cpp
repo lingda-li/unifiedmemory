@@ -438,7 +438,7 @@ namespace {
             ConstantInt *Direction = ConstantInt::get(Type::getInt32Ty(Ctx), 1, false);
             Value* args[] = {AI, Direction};
             auto *UVMMemcpyCI = builder.CreateCall(uvmMemcpyFunc, args);
-            errs() << "Info: h2d transfer inserted ";
+            errs() << "Info: H2D transfer inserted ";
             UVMMemcpyCI->dump();
             // Get device memory pointer
             ConstantInt *Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 0, false);
@@ -469,7 +469,7 @@ namespace {
             ConstantInt *Direction = ConstantInt::get(Type::getInt32Ty(Ctx), 2, false);
             Value* args[] = {AI, Direction};
             auto *UVMMemcpyCI = builder.CreateCall(uvmMemcpyFunc, args);
-            errs() << "Info: d2h transfer inserted ";
+            errs() << "Info: D2H transfer inserted ";
             UVMMemcpyCI->dump();
           }
         }
