@@ -78,8 +78,8 @@ namespace {
       // Find all pointers to allocated space
       // Iterate until no new functions that are discovered
       SmallVector<Function*, 8> Funcs;
-      SmallVector<std::pair<Value*, Function*>, 4> ArgsByVal;
-      SmallVector<std::pair<Value*, Function*>, 4> ArgsByRef;
+      SmallVector<FuncInfoEntry*, 4> ArgsByVal;
+      SmallVector<FuncInfoEntry*, 4> ArgsByRef;
       for (Function &F : M) {
         if (F.isDeclaration())
           continue;
@@ -180,10 +180,9 @@ namespace {
                         assert(SourceEntry->func_map.find(Callee) == SourceEntry->func_map.end());
                         FuncInfoEntry *FIE = new FuncInfoEntry(Callee, CI, &(*A), OPD, 1);
                         SourceEntry->insertFuncInfoEntry(FIE);
-                        Function *PF = CI->getParent()->getParent();
-                        assert(SourceEntry->func_map.find(PF) != SourceEntry->func_map.end());
-                        FIE->setParent(SourceEntry->func_map.find(PF)->second);
-                        ArgsByVal.push_back(std::make_pair(&(*A), Callee));
+                        assert(SourceEntry->func_map.find(&F) != SourceEntry->func_map.end());
+                        FIE->setParent(SourceEntry->func_map.find(&F)->second);
+                        ArgsByVal.push_back(FIE);
                         errs() << "  alias entry (func arg) ";
                         A->dump();
                       }
@@ -192,10 +191,9 @@ namespace {
                         assert(SourceEntry->func_map.find(Callee) == SourceEntry->func_map.end());
                         FuncInfoEntry *FIE = new FuncInfoEntry(Callee, CI, &(*A), OPD, 2);
                         SourceEntry->insertFuncInfoEntry(FIE);
-                        Function *PF = CI->getParent()->getParent();
-                        assert(SourceEntry->func_map.find(PF) != SourceEntry->func_map.end());
-                        FIE->setParent(SourceEntry->func_map.find(PF)->second);
-                        ArgsByRef.push_back(std::make_pair(&(*A), Callee));
+                        assert(SourceEntry->func_map.find(&F) != SourceEntry->func_map.end());
+                        FIE->setParent(SourceEntry->func_map.find(&F)->second);
+                        ArgsByRef.push_back(FIE);
                         errs() << "  base alias entry (func arg) ";
                         A->dump();
                       }
@@ -357,70 +355,72 @@ namespace {
 
       // Transform all functions that need GPU memory 
       // FIXME: potentially transform more functions than needed
-      for (auto &IT : ArgsByVal) {
-        // Change the argument to pass by refernce instead of by value
-        Value *A = IT.first;
-        Function *F = IT.second;
-        // Find the call instructions
+      // Change the argument to pass by refernce instead of by value
+      for (FuncInfoEntry *FIE : ArgsByVal) {
+        Value *A = FIE->arg;
+        Value *AV = FIE->arg_value;
+        Function *F = FIE->func;
+        CallInst *CI = FIE->call_point;
+        FuncInfoEntry *PFIE = FIE->parent;
+        Value *ParentCopy = PFIE->local_copy;
+        if (PFIE == NULL) {
+          assert(FIE->local_copy);
+        } else {
+          if (ParentCopy == NULL) {
+            errs() << "Error: parent " << PFIE->func->getName() << " didn't have a local copy\n";
+            continue;
+          }
+          assert(!FIE->local_copy);
+        }
+        // Change the argument passed to function
+        IRBuilder<> Callerbuilder(CI);
+        Value *CallerBCI = Callerbuilder.CreateBitCast(ParentCopy, AV->getType());
+        for (auto &U : AV->uses()) {
+          User* user = U.getUser();
+          if (user == CI) {
+            user->setOperand(U.getOperandNo(), CallerBCI);
+            break;
+          }
+        }
+        // Change how function argument is used
+        Instruction *CalleeFirstInst = &(*F->begin()->begin());
+        IRBuilder<> Calleebuilder(CalleeFirstInst);
+        Value *CalleeBCI = Calleebuilder.CreateBitCast(A, ParentCopy->getType());
+        ConstantInt *Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 2, false);
+        Value *IndexList[2] = {ConstantInt::get(Type::getInt64Ty(Ctx), 0, false), Offset};
+        auto *HostGEPI = Calleebuilder.CreateGEP(CalleeBCI, ArrayRef<Value*>(IndexList, 2));
+        Value *HostBCI;
+        if (HostGEPI->getType() != A->getType())
+          HostBCI = Calleebuilder.CreateBitCast(HostGEPI, A->getType());
+        else
+          HostBCI = HostGEPI;
+        SmallVector<User*, 6> Users;
+        SmallVector<unsigned, 6> UsersNo;
+        for (auto &U : A->uses()) {
+          User* user = U.getUser();
+          Users.push_back(user);
+          UsersNo.push_back(U.getOperandNo());
+        }
+        while (!Users.empty()) {
+          User* user = Users.back();
+          if (user != CalleeBCI)
+            user->setOperand(UsersNo.back(), HostBCI);
+          Users.pop_back();
+          UsersNo.pop_back();
+        }
+        // Assign local variable copy
+        FIE->local_copy = CalleeBCI;
       }
 
-      for (auto &IT : ArgsByRef) {
-        Value *A = IT.first;
-        Function *F = IT.second;
+      for (FuncInfoEntry *FIE : ArgsByRef) {
+        Value *A = FIE->arg;
+        Function *F = FIE->func;
+        assert(0);
       }
 
       // Transform CUDA APIs to UVM runtime APIs
       for (auto &DME : Info->DataMap) {
         DataEntry *DE = DME.second;
-        /*
-        // Figure out local copies for all callees
-        {
-          FuncInfoEntry *RootFIE = *DE->func_stack.begin();
-          Value *RootCopy = RootFIE->local_copy;
-          assert(RootFIE->parent == NULL);
-          for (FuncInfoEntry *FIE : DE->func_stack) {
-            Function *F = FIE->func;
-            FuncInfoEntry *PFIE = FIE->parent;
-            if (PFIE == NULL) {
-              assert(FIE->local_copy);
-              continue;
-            } else {
-              //Function *PF = FIE-parent->func;
-              if (PFIE->local_copy == NULL) {
-                errs() << "Error: parent didn't have a local copy\n";
-                continue;
-              }
-              assert(!FIE->local_copy);
-            }
-
-            // Get the defination chain
-            Value *ParentCopy = PFIE->local_copy;
-            Value *CurPoint = FIE->arg_value;
-            while (CurPoint != ParentCopy) {
-              if (auto *BCI = dyn_cast<BitCastInst>(CurPoint)) {
-                BCI->dump();
-                CurPoint = BCI->getOperand(0);
-              } else if (auto *LI = dyn_cast<LoadInst>(CurPoint)) {
-                if (FIE->type == 2) {
-                  errs() << "Error: load instruction should not be here ";
-                  LI->dump();
-                  break;
-                }
-                LI->dump();
-                CurPoint = LI->getOperand(0);
-              } else if (auto *GEPI = dyn_cast<GetElementPtrInst>(CurPoint)) {
-                GEPI->dump();
-                CurPoint = GEPI->getOperand(0);
-              } else {
-                errs() << "Error: this instruction should not be here ";
-                CurPoint->dump();
-                break;
-              }
-            }
-          }
-        }
-        */
-
         // Insert memory copy api calls
         {
           // Insert host2device __uvm_memcpy
@@ -438,6 +438,18 @@ namespace {
             ConstantInt *Direction = ConstantInt::get(Type::getInt32Ty(Ctx), 1, false);
             Value* args[] = {AI, Direction};
             auto *UVMMemcpyCI = builder.CreateCall(uvmMemcpyFunc, args);
+            errs() << "Info: h2d transfer inserted ";
+            UVMMemcpyCI->dump();
+            // Get device memory pointer
+            ConstantInt *Offset = ConstantInt::get(Type::getInt32Ty(Ctx), 0, false);
+            Value *IndexList[2] = {ConstantInt::get(Type::getInt64Ty(Ctx), 0, false), Offset};
+            auto *DeviceGEPI = builder.CreateGEP(AI, ArrayRef<Value*>(IndexList, 2));
+            Value *DeviceBCI;
+            if (DeviceGEPI->getType() != PointerType::get(Type::getInt8Ty(Ctx), 0))
+              DeviceBCI = builder.CreateBitCast(DeviceGEPI, PointerType::get(Type::getInt8Ty(Ctx), 0));
+            else
+              DeviceBCI = DeviceGEPI;
+            SACI->setOperand(0, DeviceBCI);
           }
 
           // Insert device2host __uvm_memcpy
@@ -457,6 +469,8 @@ namespace {
             ConstantInt *Direction = ConstantInt::get(Type::getInt32Ty(Ctx), 2, false);
             Value* args[] = {AI, Direction};
             auto *UVMMemcpyCI = builder.CreateCall(uvmMemcpyFunc, args);
+            errs() << "Info: d2h transfer inserted ";
+            UVMMemcpyCI->dump();
           }
         }
 

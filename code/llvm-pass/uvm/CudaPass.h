@@ -31,6 +31,13 @@ class FuncInfoEntry {
       assert(!local_copy);
       local_copy = in_local_copy;
     }
+
+    void dump() {
+      errs() << "FuncInfoEntry: call: ";
+      call_point->dump();
+      errs() << "                arg: ";
+      arg->dump();
+    }
   private:
 };
 
@@ -76,54 +83,66 @@ class DataEntry {
 };
 
 class DataInfo {
-public:
-  DenseMap<Value*, DataEntry*> DataMap; // keep all allocated memory space
-
-  DataEntry* getBaseAliasEntry(Value *base_alias_ptr) {
-    for (auto DMEntry : DataMap) {
-      if (DMEntry.second->base_ptr == base_alias_ptr)
-        return DMEntry.second;
-      for (Value *CAPTR : DMEntry.second->base_alias_ptrs) {
+  public:
+    DenseMap<Value*, DataEntry*> DataMap; // keep all allocated memory space
+  
+    DataEntry* getBaseAliasEntry(Value *base_alias_ptr) {
+      for (auto DMEntry : DataMap) {
+        if (DMEntry.second->base_ptr == base_alias_ptr)
+          return DMEntry.second;
+        for (Value *CAPTR : DMEntry.second->base_alias_ptrs) {
+          if(CAPTR == base_alias_ptr)
+            return DMEntry.second;
+        }
+      }
+      return NULL;
+    }
+  
+    bool tryInsertBaseAliasEntry(DataEntry *data_entry, Value *base_alias_ptr) {
+      for (Value *CAPTR : data_entry->base_alias_ptrs) {
         if(CAPTR == base_alias_ptr)
-          return DMEntry.second;
+          return false;
       }
+      data_entry->base_alias_ptrs.push_back(base_alias_ptr);
+      return true;
     }
-    return NULL;
-  }
-
-  bool tryInsertBaseAliasEntry(DataEntry *data_entry, Value *base_alias_ptr) {
-    for (Value *CAPTR : data_entry->base_alias_ptrs) {
-      if(CAPTR == base_alias_ptr)
-        return false;
+  
+    DataEntry* getAliasEntry(Value *alias_ptr) {
+      for (auto DMEntry : DataMap) {
+        for (Value *CAPTR : DMEntry.second->alias_ptrs) {
+          if(CAPTR == alias_ptr)
+            return DMEntry.second;
+        }
+      }
+      return NULL;
     }
-    data_entry->base_alias_ptrs.push_back(base_alias_ptr);
-    return true;
-  }
-
-  DataEntry* getAliasEntry(Value *alias_ptr) {
-    for (auto DMEntry : DataMap) {
-      for (Value *CAPTR : DMEntry.second->alias_ptrs) {
+  
+    DataEntry* getAliasEntry(DataEntry *data_entry, Value *alias_ptr) {
+      for (Value *CAPTR : data_entry->alias_ptrs) {
         if(CAPTR == alias_ptr)
-          return DMEntry.second;
+          return data_entry;
       }
+      return NULL;
     }
-    return NULL;
-  }
-
-  DataEntry* getAliasEntry(DataEntry *data_entry, Value *alias_ptr) {
-    for (Value *CAPTR : data_entry->alias_ptrs) {
-      if(CAPTR == alias_ptr)
-        return data_entry;
+  
+    bool tryInsertAliasEntry(DataEntry *data_entry, Value *alias_ptr) {
+      for (Value *CAPTR : data_entry->alias_ptrs) {
+        if(CAPTR == alias_ptr)
+          return false;
+      }
+      data_entry->alias_ptrs.push_back(alias_ptr);
+      return true;
     }
-    return NULL;
-  }
-
-  bool tryInsertAliasEntry(DataEntry *data_entry, Value *alias_ptr) {
-    for (Value *CAPTR : data_entry->alias_ptrs) {
-      if(CAPTR == alias_ptr)
-        return false;
+  
+    DataEntry* getDataEntry(FuncInfoEntry *fie) {
+      Function *f = fie->func;
+      for (auto DMEntry : DataMap) {
+        DataEntry *DE = DMEntry.second;
+        if (DE->func_map.find(f) != DE->func_map.end()) {
+          assert(fie == DE->func_map.find(f)->second);
+          return DE;
+        }
+      }
+      return NULL;
     }
-    data_entry->alias_ptrs.push_back(alias_ptr);
-    return true;
-  }
 };
