@@ -1,10 +1,13 @@
 CODE_PATH = `pwd`/../
+CUDA_PATH = /sw/summitdev/cuda/8.0.61-1/
+#CUDA_PATH = /software/cuda/8.0/
+
 ifndef OPT
-COMPILE_FLAG = --cuda-gpu-arch=sm_35 -I/software/cuda/8.0/include -I$(CODE_PATH)/uvm-runtime -O3
+COMPILE_FLAG = --cuda-gpu-arch=sm_35 -I$(CUDA_PATH)/include -I$(CODE_PATH)/uvm-runtime -O3
 else
-COMPILE_FLAG = --cuda-gpu-arch=sm_35 -I/software/cuda/8.0/include -I$(CODE_PATH)/uvm-runtime -O$(OPT)
+COMPILE_FLAG = --cuda-gpu-arch=sm_35 -I$(CUDA_PATH)/include -I$(CODE_PATH)/uvm-runtime -O$(OPT)
 endif
-LINK_FLAG = -L/software/cuda/8.0/lib64 -lcudart -ldl -lrt -pthread -lm $(CODE_PATH)/uvm-runtime/uvm-runtime.o
+LINK_FLAG = -L$(CUDA_PATH)/lib64 -lcudart -ldl -lrt -pthread -lm $(CODE_PATH)/uvm-runtime/uvm-runtime.o
 IR_FLAG = -c -S -emit-llvm
 PASS_FLAG = -Xclang -load -Xclang $(CODE_PATH)/llvm-pass/build/uvm/libUVMTransformPass.so
 
