@@ -3,6 +3,11 @@
 *.ll
 *.bc
 
+*.aux
+*.bbl
+*.blg
+*.out
+
 core.*
 
 code/llvm-pass/build
