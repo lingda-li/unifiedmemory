@@ -30,7 +30,7 @@
 
 
 \begin{document}
-\title{Exploring Data Locality for GPU Unified Virtual Memory}
+\title{Exploiting Data Locality for Unified CPU/GPU Memory Space using OpenMP}
 
 
 %\author{Lingda Li}
@@ -45,7 +45,16 @@
 
 \begin{abstract}
 
-To facilitate GPU programming and accelerate applications with large working set, recent GPUs support unified CPU/GPU memory addressing and on-demand page migration. However, our investigation shows that current page migration mechanism is not aware of data locality, resulting in poor performance and redundant data movement. To improve the performance and energy efficiency of GPU unified memory, we propose a framework to achieve intelligent unified memory management using both compile-time and runtime information. Compiler collects information such as data access pattern and reuse frequency and passes them to runtime library, and then runtime makes data placement decisions based on both current hardware status and compiler analysis results. The proposed scheme can benefit both directive based GPU programming models such as OpenMP and native GPU programming languages such as CUDA. Our preliminary evaluation shows that our framework can significantly improve GPU performance and reduce redundant data movement between CPU and GPU for benchmarks with large working set.
+To facilitate GPU programming and accelerate applications with large working set, recent GPUs support unified CPU/GPU memory space addressing.
+In such systems, CPU and GPU can conveniently address each other's memory and data is moved between different memory on demand.
+However, our investigation shows that the current data migration mechanism is not aware of data locality, resulting in poor performance and redundant data movement.
+The upcoming OpenMP 5.0 will include new data locality features to address the complex memory hierarchy in today's systems, however, current proposed features do not take unified memory into consideration and cannot address its performance problem.
+To solve this problem, we propose to extend OpenMP data locality features to improve unified memory performance.
+The proposed extension exposes different GPU memory management choices for programmers to exploit GPU data locality explicitly.
+In scenarios with complex data locality, programmers are also allowed to pass hints so that OpenMP compiler and runtime make better GPU data management decisions.
+Preliminary evaluation shows that our proposal can significantly improve GPU performance and reduce redundant data movement between CPU and GPU for benchmarks with large working set.
+
+%To facilitate GPU programming and accelerate applications with large working set, recent GPUs support unified CPU/GPU memory addressing and on-demand page migration. However, our investigation shows that current page migration mechanism is not aware of data locality, resulting in poor performance and redundant data movement. To improve the performance and energy efficiency of GPU unified memory, we propose a framework to achieve intelligent unified memory management using both compile-time and runtime information. Compiler collects information such as data access pattern and reuse frequency and passes them to runtime library, and then runtime makes data placement decisions based on both current hardware status and compiler analysis results. The proposed scheme can benefit both directive based GPU programming models such as OpenMP and native GPU programming languages such as CUDA. Our preliminary evaluation shows that our framework can significantly improve GPU performance and reduce redundant data movement between CPU and GPU for benchmarks with large working set.
 %which utilizes both static and dynamic information provided by compiler and runtime respectively. Compiler collects information such as data access pattern and reuse frequency and passes them to runtime library, and then runtime makes data placement decisions based on both current hardware status and compiler analysis results. Our preliminary evaluation shows that our framework can significantly improve GPU performance and reduce redundant data movement between CPU and GPU for benchmarks with large working set.
 
 \end{abstract}
