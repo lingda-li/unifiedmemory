@@ -1,6 +1,6 @@
 CODE_PATH = `pwd`/../
-CUDA_PATH = /sw/summitdev/cuda/8.0.61-1/
-#CUDA_PATH = /software/cuda/8.0/
+#CUDA_PATH = /sw/summitdev/cuda/8.0.61-1/
+CUDA_PATH = /software/cuda/8.0/
 
 ifndef OPT
 COMPILE_FLAG = --cuda-gpu-arch=sm_35 -I$(CUDA_PATH)/include -I$(CODE_PATH)/uvm-runtime -O3
