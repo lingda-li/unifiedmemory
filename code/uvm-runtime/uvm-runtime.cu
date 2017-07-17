@@ -1,7 +1,7 @@
 #include "stdio.h"
 #include "uvm-runtime.h"
 
-#define ALL_MANAGED
+//#define ALL_MANAGED
 #define GPU_PRE_PASCAL
 
 #define UVM_DEBUG
@@ -41,6 +41,10 @@ void __uvm_free(struct uvmMallocInfo* uvmInfo)
 
 void __uvm_memcpy(struct uvmMallocInfo* uvmInfo, cudaMemcpyKind kind)
 {
+#ifdef UVM_DEBUG
+  printf("Debug: __uvm_memcpy 0x%lx 0x%lx (%u)\n", (unsigned long)uvmInfo->hostPtr, (unsigned long)uvmInfo->devPtr, kind); fflush(stdout);
+#endif
+
   if (uvmInfo->isSame) {
 #ifdef GPU_PRE_PASCAL
     if (kind == cudaMemcpyDeviceToHost)
@@ -56,7 +60,4 @@ void __uvm_memcpy(struct uvmMallocInfo* uvmInfo, cudaMemcpyKind kind)
     cudaMemcpy(devPtr, hostPtr, size, kind);
   else
     cudaMemcpy(hostPtr, devPtr, size, kind);
-#ifdef UVM_DEBUG
-  printf("Debug: __uvm_memcpy 0x%lx 0x%lx\n", (unsigned long)uvmInfo->hostPtr, (unsigned long)uvmInfo->devPtr); fflush(stdout);
-#endif
 }

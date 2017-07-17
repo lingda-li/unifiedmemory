@@ -7,6 +7,7 @@ COMPILE_FLAG = --cuda-gpu-arch=sm_35 -I$(CUDA_PATH)/include -I$(CODE_PATH)/uvm-r
 else
 COMPILE_FLAG = --cuda-gpu-arch=sm_35 -I$(CUDA_PATH)/include -I$(CODE_PATH)/uvm-runtime -O$(OPT)
 endif
+OMP_COMPILE_FLAG = -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -I$(CUDA_PATH)/include -O3
 LINK_FLAG = -L$(CUDA_PATH)/lib64 -lcudart -ldl -lrt -pthread -lm $(CODE_PATH)/uvm-runtime/uvm-runtime.o
 IR_FLAG = -c -S -emit-llvm
 PASS_FLAG = -Xclang -load -Xclang $(CODE_PATH)/llvm-pass/build/uvm/libUVMTransformPass.so
@@ -27,6 +28,9 @@ uvmapi: uvmapitest.cu uvmapitest_memcpy.cu
 uvmapiir: uvmapitest.cu uvmapitest_memcpy.cu
 	clang $(COMPILE_FLAG) $(IR_FLAG) uvmapitest.cu
 	clang $(COMPILE_FLAG) $(IR_FLAG) uvmapitest_memcpy.cu
+
+omp: omp_m.c
+	clang $(OMP_COMPILE_FLAG) $(LINK_FLAG) omp_m.c -o omp_m
 
 clean:
 	rm core.* *.bc *.ll
