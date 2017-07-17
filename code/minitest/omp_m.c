@@ -32,10 +32,13 @@ int main()
     }
     DEBUG_PRINT
 
-#pragma omp target teams distribute parallel for
+//#pragma omp target data map(to:size) map(to:d_a[0:size]) map(from:d_b[0:size])
+#pragma omp target data map(to:size)
+#pragma omp target teams distribute parallel for is_device_ptr(d_a) is_device_ptr(d_b)
     for (int i = 0; i < size; i++) {
         d_b[i] = d_a[i] * 2;
     }
+    cudaDeviceSynchronize();
 
     DEBUG_PRINT
 
