@@ -11,11 +11,12 @@
 #endif
 
 #define SIZE 10240
+//#define SIZE (8 * 1024 * 1024 / sizeof(int) * 1024)
 
 int main()
 {
-    int i;
-    int size = SIZE;
+    uint64_t i;
+    uint64_t size = SIZE;
     int BlockSize = 256;
     int BlockNum = (size + BlockSize - 1) / BlockSize;
     int *d_a, *d_b;
@@ -35,7 +36,7 @@ int main()
 //#pragma omp target data map(to:size) map(to:d_a[0:size]) map(from:d_b[0:size])
 #pragma omp target data map(to:size)
 #pragma omp target teams distribute parallel for is_device_ptr(d_a) is_device_ptr(d_b)
-    for (int i = 0; i < size; i++) {
+    for (uint64_t i = 0; i < size; i++) {
         d_b[i] = d_a[i] * 2;
     }
     cudaDeviceSynchronize();
