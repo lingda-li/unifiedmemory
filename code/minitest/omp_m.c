@@ -10,6 +10,8 @@
 #define DEBUG_PRINT
 #endif
 
+//#define USE_UVM
+
 #define SIZE 10240
 //#define SIZE (8 * 1024 * 1024 / sizeof(int) * 1024)
 
@@ -22,9 +24,15 @@ int main()
     sum_a = sum_c = 0.0;
     DEBUG_PRINT
 
-	cudaMallocManaged((void **)&d_a, size*sizeof(double), 1);
-	cudaMallocManaged((void **)&d_b, size*sizeof(double), 1);
-	cudaMallocManaged((void **)&d_c, size*sizeof(double), 1);
+	cudaMallocManaged((void **)&d_a, size*sizeof(double), cudaMemAttachHost);
+	cudaMallocManaged((void **)&d_b, size*sizeof(double), cudaMemAttachHost);
+	cudaMallocManaged((void **)&d_c, size*sizeof(double), cudaMemAttachHost);
+	//cudaMalloc((void **)&d_a, size*sizeof(double));
+	//cudaMalloc((void **)&d_b, size*sizeof(double));
+	//cudaMalloc((void **)&d_c, size*sizeof(double));
+    //d_a = (double*)malloc(size*sizeof(double));
+    //d_b = (double*)malloc(size*sizeof(double));
+    //d_c = (double*)malloc(size*sizeof(double));
     DEBUG_PRINT
     for(i = 0; i < size; i++) {
         d_a[i] = (rand() % 10) * 0.5;
@@ -33,10 +41,17 @@ int main()
     }
     DEBUG_PRINT
 
-//#pragma omp target data map(to:size) map(to:d_a[0:size]) map(from:d_b[0:size])
+#ifdef USE_UVM
 #pragma omp target data map(to:size)
+#else
+#pragma omp target data map(to:d_a[0:size]) map(to:d_b[0:size]) map(from:d_c[0:size])
+#endif
     {
+#ifdef USE_UVM
 #pragma omp target teams distribute parallel for is_device_ptr(d_a) is_device_ptr(d_b) is_device_ptr(d_c)
+#else
+#pragma omp target teams distribute parallel for
+#endif
     for (uint64_t i = 0; i < size; i++) {
         d_c[i] = d_a[i] / d_b[i];
     }
@@ -50,5 +65,8 @@ int main()
 
     printf("sum_a: %f, sum_c: %f\n", sum_a, sum_c);
 
+    cudaFree(d_a);
+    cudaFree(d_b);
+    cudaFree(d_c);
     return 0;
 }
