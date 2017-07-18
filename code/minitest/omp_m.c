@@ -17,36 +17,38 @@ int main()
 {
     uint64_t i;
     uint64_t size = SIZE;
-    int BlockSize = 256;
-    int BlockNum = (size + BlockSize - 1) / BlockSize;
-    int *d_a, *d_b;
-    int sum_a, sum_b;
-    sum_a = sum_b = 0;
+    double *d_a, *d_b, *d_c;
+    double sum_a, sum_c;
+    sum_a = sum_c = 0.0;
     DEBUG_PRINT
 
-	cudaMallocManaged((void **)&d_a, size*sizeof(int), 1);
-	cudaMallocManaged((void **)&d_b, size*sizeof(int), 1);
+	cudaMallocManaged((void **)&d_a, size*sizeof(double), 1);
+	cudaMallocManaged((void **)&d_b, size*sizeof(double), 1);
+	cudaMallocManaged((void **)&d_c, size*sizeof(double), 1);
     DEBUG_PRINT
     for(i = 0; i < size; i++) {
-        d_a[i] = rand() % 100;
+        d_a[i] = (rand() % 10) * 0.5;
+        d_b[i] = (rand() % 2 + 1) * 1.0;
         sum_a += d_a[i];
     }
     DEBUG_PRINT
 
 //#pragma omp target data map(to:size) map(to:d_a[0:size]) map(from:d_b[0:size])
 #pragma omp target data map(to:size)
-#pragma omp target teams distribute parallel for is_device_ptr(d_a) is_device_ptr(d_b)
+    {
+#pragma omp target teams distribute parallel for is_device_ptr(d_a) is_device_ptr(d_b) is_device_ptr(d_c)
     for (uint64_t i = 0; i < size; i++) {
-        d_b[i] = d_a[i] * 2;
+        d_c[i] = d_a[i] / d_b[i];
+    }
     }
     cudaDeviceSynchronize();
 
     DEBUG_PRINT
 
     for(i = 0; i < size; i++)
-        sum_b += d_b[i];
+        sum_c += d_c[i];
 
-    printf("sum_a: %d, sum_b: %d\n", sum_a, sum_b);
+    printf("sum_a: %f, sum_c: %f\n", sum_a, sum_c);
 
     return 0;
 }
