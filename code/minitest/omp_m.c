@@ -10,7 +10,10 @@
 #define DEBUG_PRINT
 #endif
 
-//#define USE_UVM
+#define USE_UVM
+#define UVM_ALLOC
+//#define HOST_ALLOC
+//#define DEVICE_ALLOC
 
 #define SIZE 10240
 //#define SIZE (8 * 1024 * 1024 / sizeof(int) * 1024)
@@ -24,15 +27,23 @@ int main()
     sum_a = sum_c = 0.0;
     DEBUG_PRINT
 
-	cudaMallocManaged((void **)&d_a, size*sizeof(double), cudaMemAttachHost);
-	cudaMallocManaged((void **)&d_b, size*sizeof(double), cudaMemAttachHost);
-	cudaMallocManaged((void **)&d_c, size*sizeof(double), cudaMemAttachHost);
-	//cudaMalloc((void **)&d_a, size*sizeof(double));
-	//cudaMalloc((void **)&d_b, size*sizeof(double));
-	//cudaMalloc((void **)&d_c, size*sizeof(double));
-    //d_a = (double*)malloc(size*sizeof(double));
-    //d_b = (double*)malloc(size*sizeof(double));
-    //d_c = (double*)malloc(size*sizeof(double));
+#if defined(UVM_ALLOC)
+	cudaMallocManaged((void **)&d_a, size*sizeof(double), cudaMemAttachGlobal);
+	cudaMallocManaged((void **)&d_b, size*sizeof(double), cudaMemAttachGlobal);
+	cudaMallocManaged((void **)&d_c, size*sizeof(double), cudaMemAttachGlobal);
+#elif defined(HOST_ALLOC)
+	cudaMallocHost((void **)&d_a, size*sizeof(double));
+	cudaMallocHost((void **)&d_b, size*sizeof(double));
+	cudaMallocHost((void **)&d_c, size*sizeof(double));
+#elif defined(DEVICE_ALLOC)
+	cudaMalloc((void **)&d_a, size*sizeof(double));
+	cudaMalloc((void **)&d_b, size*sizeof(double));
+	cudaMalloc((void **)&d_c, size*sizeof(double));
+#else
+    d_a = (double*)malloc(size*sizeof(double));
+    d_b = (double*)malloc(size*sizeof(double));
+    d_c = (double*)malloc(size*sizeof(double));
+#endif
     DEBUG_PRINT
     for(i = 0; i < size; i++) {
         d_a[i] = (rand() % 10) * 0.5;
