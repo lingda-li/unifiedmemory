@@ -10,8 +10,8 @@
 #define DEBUG_PRINT
 #endif
 
-#define USE_UVM
-#define UVM_ALLOC
+//#define USE_UVM
+//#define UVM_ALLOC
 //#define HOST_ALLOC
 //#define DEVICE_ALLOC
 
@@ -76,8 +76,10 @@ int main()
 
     printf("sum_a: %f, sum_c: %f\n", sum_a, sum_c);
 
+#if defined(UVM_ALLOC) || defined(HOST_ALLOC) || defined(DEVICE_ALLOC)
     cudaFree(d_a);
     cudaFree(d_b);
     cudaFree(d_c);
+#endif
     return 0;
 }
