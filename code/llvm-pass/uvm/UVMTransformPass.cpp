@@ -23,7 +23,7 @@ namespace {
     bool Succeeded = true;
 
     virtual bool runOnModule(Module &M) {
-      errs() << "  ---- UVM Transform (" << M.getName() << ") ----\n";
+      errs() << "  ---- UVM Transform (" << M.getName() << ", " << M.getTargetTriple() << ") ----\n";
       // Find all places that allocate memory
       for (Function &F : M) {
         if (F.isDeclaration())
@@ -268,7 +268,8 @@ namespace {
               } else if (Callee && Callee->getName() == "cudaFree") {
                 auto *FreePtr = CI->getArgOperand(0);
                 DataEntry *data_entry = Info->getAliasEntry(FreePtr);
-                assert(data_entry);
+                if (!data_entry) // In case this cudaFree is for cudaMalloc
+                  continue;
                 assert(!data_entry->free);
                 data_entry->free = CI;
                 errs() << "Info: find free for ";
