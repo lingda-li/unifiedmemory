@@ -7,7 +7,6 @@
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Analysis/BlockFrequencyInfo.h"
-//#include "MemAccessAnalysis.h"
 #include "MemAccessDataStructure.h"
 using namespace llvm;
 
@@ -23,6 +22,8 @@ struct FuncArgAccessInfoPass : public ModulePass {
     for (Function &F : M) {
       if (F.isDeclaration())
         continue;
+      errs() << "On function " << F.getName() << "\n";
+
       // Add an entry for every pointer argument
       Function::ArgumentListType::iterator AIT;
       int i = 0;
@@ -32,8 +33,12 @@ struct FuncArgAccessInfoPass : public ModulePass {
         if (!PT)
           continue;
         FuncArgEntry E(&F, A, i);
+        if (!E.tryInsertAliasPtr(A))
+          assert(0);
         FAI.newEntry(E);
       }
+
+      // Pointer aliasing analysis
       for (auto &BB : F) {
         for (auto &I : BB) {
           if (auto *LI = dyn_cast<LoadInst>(&I)) {
@@ -95,7 +100,42 @@ struct FuncArgAccessInfoPass : public ModulePass {
           }
         }
       }
+
+      // Access frequency analysis
+      BlockFrequencyInfo *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>(F).getBFI();
+      for (auto &BB : F) {
+        double Freq = (double)BFI->getBlockFreq(&BB).getFrequency() / (double)BFI->getEntryFreq();
+        for (auto &I : BB) {
+          if (auto *LI = dyn_cast<LoadInst>(&I)) {
+            Value *LoadAddr = LI->getOperand(0);
+            if (FuncArgEntry *E = FAI.getAliasEntry(LoadAddr)) {
+              errs() << "  load from ";
+              E->dumpBase();
+              E->load_freq += Freq;
+            }
+          } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
+            Value *StoreAddr = SI->getOperand(1);
+            if (FuncArgEntry *E = FAI.getAliasEntry(StoreAddr)) {
+              errs() << "  store to ";
+              E->dumpBase();
+              E->store_freq += Freq;
+            }
+          }
+        }
+      }
+      for (auto &E : *FAI.getEntries()) {
+        if (E.isMatch(&F, -1)) {
+          errs() << "Frequency of ";
+          E.dumpBase();
+          errs() << "  load is " << E.load_freq << "\n";
+          errs() << "  store is " << E.store_freq << "\n";
+        }
+      }
     }
+  }
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<BlockFrequencyInfoWrapperPass>();
   }
 
   MemInfo<FuncArgEntry> &getFAI() { return FAI; }
@@ -150,20 +190,14 @@ struct MemAccessInfoPass : public ModulePass {
             Value *LoadAddr = LI->getOperand(0);
             if (DataEntry *E = MAI.getAliasEntry(LoadAddr)) {
               errs() << "  load from ";
-              if (E->base_ptr)
-                E->base_ptr->dump();
-              else
-                E->alias_ptrs[0]->dump();
+              E->dumpBase();
               E->load_freq += Freq;
             }
           } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
             Value *StoreAddr = SI->getOperand(1);
             if (DataEntry *E = MAI.getAliasEntry(StoreAddr)) {
               errs() << "  store to ";
-              if (E->base_ptr)
-                E->base_ptr->dump();
-              else
-                E->alias_ptrs[0]->dump();
+              E->dumpBase();
               E->store_freq += Freq;
             }
           } else if (auto *CI = dyn_cast<CallInst>(&I)) {
@@ -171,17 +205,15 @@ struct MemAccessInfoPass : public ModulePass {
               Value *OPD = CI->getOperand(i);
               unsigned AliasTy = 0;
               DataEntry *E = MAI.getAliasEntry(OPD);
-              assert(MAI.getBaseAliasEntry(OPD) == NULL);
               if (E) {
+                assert(MAI.getBaseAliasEntry(OPD) == NULL);
                 errs() << "  call using ";
-                if (E->base_ptr)
-                  E->base_ptr->dump();
-                else
-                  E->alias_ptrs[0]->dump();
+                E->dumpBase();
                 FuncArgEntry *FAE = FAI->getFuncArgEntry(CI->getCalledFunction(), i);
-                assert(FAE);
-                E->load_freq += Freq * FAE->getLoadFreq();
-                E->store_freq += Freq * FAE->getStoreFreq();
+                if (FAE) { // Could reach declaration here
+                  E->load_freq += Freq * FAE->getLoadFreq();
+                  E->store_freq += Freq * FAE->getStoreFreq();
+                }
               }
             }
           }
@@ -191,10 +223,7 @@ struct MemAccessInfoPass : public ModulePass {
 
     for (auto &E : *MAI.getEntries()) {
       errs() << "Frequency of ";
-      if (E.base_ptr)
-        E.base_ptr->dump();
-      else
-        E.alias_ptrs[0]->dump();
+      E.dumpBase();
       errs() << "  load is " << E.load_freq << "\n";
       errs() << "  store is " << E.store_freq << "\n";
     }
@@ -459,6 +488,7 @@ char MemAccessInfoPass::ID = 0;
 static void registerMemAccessInfoPass(const PassManagerBuilder &,
                          legacy::PassManagerBase &PM) {
   PM.add(new BlockFrequencyInfoWrapperPass());
+  PM.add(new FuncArgAccessInfoPass());
   PM.add(new MemAccessInfoPass());
 }
 static RegisterStandardPasses

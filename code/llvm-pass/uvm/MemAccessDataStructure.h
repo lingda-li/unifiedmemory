@@ -111,28 +111,6 @@ class DataEntry {
       }
       return NULL;
     }
-};
-
-class FuncArgEntry : public DataEntry {
-  private:
-    Function *func;
-    Value *arg;
-    int arg_num;
-    bool valid;
-
-  public:
-    FuncArgEntry(Function *f, Value *a, int an)
-      : DataEntry(), func(f), arg(a), arg_num(an), valid(false) {}
-
-    bool isMatch(Function *f, int an) {
-      if (func == f && arg_num == an)
-        return true;
-      return false;
-    }
-    double getLoadFreq() { return load_freq; }
-    double getStoreFreq() { return store_freq; }
-    bool getValid() { return valid; }
-    void setValid() { valid = true; }
 
     bool tryInsertAliasPtr(Value *alias_ptr) {
       for (Value *CAPTR : alias_ptrs) {
@@ -150,6 +128,40 @@ class FuncArgEntry : public DataEntry {
       base_alias_ptrs.push_back(alias_ptr);
       return true;
     }
+
+    double getLoadFreq() { return load_freq; }
+    double getStoreFreq() { return store_freq; }
+
+    void dumpBase() {
+      if (base_ptr)
+        base_ptr->dump();
+      else {
+        assert(!alias_ptrs.empty());
+        alias_ptrs[0]->dump();
+      }
+    }
+};
+
+class FuncArgEntry : public DataEntry {
+  private:
+    Function *func;
+    Value *arg;
+    int arg_num;
+    bool valid;
+
+  public:
+    FuncArgEntry(Function *f, Value *a, int an)
+      : DataEntry(), func(f), arg(a), arg_num(an), valid(false) {}
+
+    bool isMatch(Function *f, int an) {
+      if (func == f && arg_num == an)
+        return true;
+      else if (func == f && an == -1)
+        return true;
+      return false;
+    }
+    bool getValid() { return valid; }
+    void setValid() { valid = true; }
 };
 
 template <class EntryTy>
