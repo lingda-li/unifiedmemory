@@ -11,6 +11,8 @@ using namespace llvm;
 #define DEBUG_PRINT {errs() << "Error: "<< __LINE__ << "\n";}
 
 class FuncInfoEntry {
+  private:
+
   public:
     Function *func;
     CallInst *call_point;
@@ -40,7 +42,6 @@ class FuncInfoEntry {
       errs() << "                arg: ";
       arg->dump();
     }
-  private:
 };
 
 class DataEntry {
@@ -63,7 +64,23 @@ class DataEntry {
   
     DenseMap<Function*, FuncInfoEntry*> func_map; // keep uvmMallocInfo copies for each function involved
     SmallVector<FuncInfoEntry*, 2> func_stack; // a stack version of above
+
+    // Load & store frequency
+    double load_freq, store_freq;
   
+    DataEntry() {
+      base_ptr = NULL;
+      size = NULL;
+
+      pair_entry = NULL;
+      reallocated_base_ptr = NULL;
+      keep_me = false;
+      alloc = NULL;
+      free = NULL;
+
+      load_freq = store_freq = 0.0;
+    }
+
     DataEntry(Value *in_base_ptr, unsigned in_type, Value *in_size) {
       base_ptr = in_base_ptr;
       type = in_type;
@@ -75,6 +92,8 @@ class DataEntry {
       keep_me = false;
       alloc = NULL;
       free = NULL;
+
+      load_freq = store_freq = 0.0;
     }
 
     void insertFuncInfoEntry(FuncInfoEntry *in_fie) {
@@ -82,25 +101,78 @@ class DataEntry {
       func_map.insert(std::make_pair(F, in_fie));
       func_stack.push_back(in_fie);
     }
+
+    DataEntry* getBaseAliasPtr(Value *base_alias_ptr) {
+      if (base_ptr == base_alias_ptr)
+        return this;
+      for (Value *CAPTR : base_alias_ptrs) {
+        if(CAPTR == base_alias_ptr)
+          return this;
+      }
+      return NULL;
+    }
 };
 
-class DataInfo {
+class FuncArgEntry : public DataEntry {
+  private:
+    Function *func;
+    Value *arg;
+    int arg_num;
+    bool valid;
+
   public:
-    DenseMap<Value*, DataEntry*> DataMap; // keep all allocated memory space
-  
-    DataEntry* getBaseAliasEntry(Value *base_alias_ptr) {
-      for (auto DMEntry : DataMap) {
-        if (DMEntry.second->base_ptr == base_alias_ptr)
-          return DMEntry.second;
-        for (Value *CAPTR : DMEntry.second->base_alias_ptrs) {
-          if(CAPTR == base_alias_ptr)
-            return DMEntry.second;
-        }
+    FuncArgEntry(Function *f, Value *a, int an)
+      : DataEntry(), func(f), arg(a), arg_num(an), valid(false) {}
+
+    bool isMatch(Function *f, int an) {
+      if (func == f && arg_num == an)
+        return true;
+      return false;
+    }
+    double getLoadFreq() { return load_freq; }
+    double getStoreFreq() { return store_freq; }
+    bool getValid() { return valid; }
+    void setValid() { valid = true; }
+
+    bool tryInsertAliasPtr(Value *alias_ptr) {
+      for (Value *CAPTR : alias_ptrs) {
+        if(CAPTR == alias_ptr)
+          return false;
+      }
+      alias_ptrs.push_back(alias_ptr);
+      return true;
+    }
+    bool tryInsertBaseAliasPtr(Value *alias_ptr) {
+      for (Value *CAPTR : base_alias_ptrs) {
+        if(CAPTR == alias_ptr)
+          return false;
+      }
+      base_alias_ptrs.push_back(alias_ptr);
+      return true;
+    }
+};
+
+template <class EntryTy>
+class MemInfo {
+  private:
+    std::vector<EntryTy> Entries; // memory allocation info
+
+  public:
+    std::vector<EntryTy>* getEntries() { return &Entries; }
+
+    void newEntry(EntryTy data_entry) {
+      Entries.push_back(data_entry);
+    }
+
+    EntryTy* getBaseAliasEntry(Value *base_alias_ptr) {
+      for (auto &E : Entries) {
+        if (E.getBaseAliasPtr(base_alias_ptr))
+          return &E;
       }
       return NULL;
     }
   
-    bool tryInsertBaseAliasEntry(DataEntry *data_entry, Value *base_alias_ptr) {
+    bool tryInsertBaseAliasEntry(EntryTy *data_entry, Value *base_alias_ptr) {
       for (Value *CAPTR : data_entry->base_alias_ptrs) {
         if(CAPTR == base_alias_ptr)
           return false;
@@ -109,17 +181,17 @@ class DataInfo {
       return true;
     }
   
-    DataEntry* getAliasEntry(Value *alias_ptr) {
-      for (auto DMEntry : DataMap) {
-        for (Value *CAPTR : DMEntry.second->alias_ptrs) {
+    EntryTy* getAliasEntry(Value *alias_ptr) {
+      for (auto &E : Entries) {
+        for (Value *CAPTR : E.alias_ptrs) {
           if(CAPTR == alias_ptr)
-            return DMEntry.second;
+            return &E;
         }
       }
       return NULL;
     }
   
-    DataEntry* getAliasEntry(DataEntry *data_entry, Value *alias_ptr) {
+    EntryTy* getAliasEntry(EntryTy *data_entry, Value *alias_ptr) {
       for (Value *CAPTR : data_entry->alias_ptrs) {
         if(CAPTR == alias_ptr)
           return data_entry;
@@ -127,7 +199,7 @@ class DataInfo {
       return NULL;
     }
   
-    bool tryInsertAliasEntry(DataEntry *data_entry, Value *alias_ptr) {
+    bool tryInsertAliasEntry(EntryTy *data_entry, Value *alias_ptr) {
       for (Value *CAPTR : data_entry->alias_ptrs) {
         if(CAPTR == alias_ptr)
           return false;
@@ -135,15 +207,14 @@ class DataInfo {
       data_entry->alias_ptrs.push_back(alias_ptr);
       return true;
     }
-  
-    DataEntry* getDataEntry(FuncInfoEntry *fie) {
-      Function *f = fie->func;
-      for (auto DMEntry : DataMap) {
-        DataEntry *DE = DMEntry.second;
-        if (DE->func_map.find(f) != DE->func_map.end()) {
-          assert(fie == DE->func_map.find(f)->second);
-          return DE;
-        }
+
+    FuncArgEntry* getFuncArgEntry(Function *f, int an) {
+      for (auto &E : Entries) {
+        if (auto *FAE = dyn_cast<FuncArgEntry>(&E)) {
+          if (FAE->isMatch(f, an))
+            return FAE;
+        } else
+          return NULL;
       }
       return NULL;
     }

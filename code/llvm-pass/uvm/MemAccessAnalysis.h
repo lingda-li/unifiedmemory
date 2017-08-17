@@ -11,6 +11,8 @@ using namespace llvm;
 #define DEBUG_PRINT {errs() << "Error: "<< __LINE__ << "\n";}
 
 class FuncInfoEntry {
+  private:
+
   public:
     Function *func;
     CallInst *call_point;
@@ -40,7 +42,6 @@ class FuncInfoEntry {
       errs() << "                arg: ";
       arg->dump();
     }
-  private:
 };
 
 class DataEntry {
@@ -63,7 +64,23 @@ class DataEntry {
   
     DenseMap<Function*, FuncInfoEntry*> func_map; // keep uvmMallocInfo copies for each function involved
     SmallVector<FuncInfoEntry*, 2> func_stack; // a stack version of above
+
+    // Load & store frequency
+    double load_freq, store_freq;
   
+    DataEntry() {
+      base_ptr = NULL;
+      size = NULL;
+
+      pair_entry = NULL;
+      reallocated_base_ptr = NULL;
+      keep_me = false;
+      alloc = NULL;
+      free = NULL;
+
+      load_freq = store_freq = 0.0;
+    }
+
     DataEntry(Value *in_base_ptr, unsigned in_type, Value *in_size) {
       base_ptr = in_base_ptr;
       type = in_type;
@@ -75,6 +92,8 @@ class DataEntry {
       keep_me = false;
       alloc = NULL;
       free = NULL;
+
+      load_freq = store_freq = 0.0;
     }
 
     void insertFuncInfoEntry(FuncInfoEntry *in_fie) {
@@ -84,17 +103,70 @@ class DataEntry {
     }
 };
 
-class DataInfo {
+class FuncArgEntry {
+  private:
+    Function *func;
+    Value *arg;
+    int arg_num;
+
+    SmallVector<Value*, 8> alias_ptrs;
+    SmallVector<Value*, 2> base_alias_ptrs;
+
+    // Load & store frequency
+    double load_freq, store_freq;
+    bool valid;
+
   public:
-    DenseMap<Value*, DataEntry*> DataMap; // keep all allocated memory space
-  
+    FuncArgEntry(Function *f, Value *a, int an)
+      : func(f), arg(a), arg_num(an), load_freq(0.0), store_freq(0.0), valid(false) {}
+
+    bool isMatch(Function *f, int an) {
+      if (func == f && arg_num == an)
+        return true;
+      return false;
+    }
+    double getLoadFreq() { return load_freq; }
+    double getStoreFreq() { return store_freq; }
+    bool getValid() { return valid; }
+    void setValid() { valid = true; }
+
+    bool tryInsertAliasPtr(Value *alias_ptr) {
+      for (Value *CAPTR : alias_ptrs) {
+        if(CAPTR == alias_ptr)
+          return false;
+      }
+      alias_ptrs.push_back(alias_ptr);
+      return true;
+    }
+    bool tryInsertBaseAliasPtr(Value *alias_ptr) {
+      for (Value *CAPTR : base_alias_ptrs) {
+        if(CAPTR == alias_ptr)
+          return false;
+      }
+      base_alias_ptrs.push_back(alias_ptr);
+      return true;
+    }
+};
+
+class MemAccessInfo {
+  private:
+    std::vector<DataEntry> Entries; // memory allocation info
+    std::vector<FuncArgEntry> FuncArgs; // function argument access info
+
+  public:
+    std::vector<DataEntry>* getEntries() { return &Entries; }
+
+    void newEntry(DataEntry data_entry) {
+      Entries.push_back(data_entry);
+    }
+
     DataEntry* getBaseAliasEntry(Value *base_alias_ptr) {
-      for (auto DMEntry : DataMap) {
-        if (DMEntry.second->base_ptr == base_alias_ptr)
-          return DMEntry.second;
-        for (Value *CAPTR : DMEntry.second->base_alias_ptrs) {
+      for (auto &E : Entries) {
+        if (E.base_ptr == base_alias_ptr)
+          return &E;
+        for (Value *CAPTR : E.base_alias_ptrs) {
           if(CAPTR == base_alias_ptr)
-            return DMEntry.second;
+            return &E;
         }
       }
       return NULL;
@@ -110,10 +182,10 @@ class DataInfo {
     }
   
     DataEntry* getAliasEntry(Value *alias_ptr) {
-      for (auto DMEntry : DataMap) {
-        for (Value *CAPTR : DMEntry.second->alias_ptrs) {
+      for (auto &E : Entries) {
+        for (Value *CAPTR : E.alias_ptrs) {
           if(CAPTR == alias_ptr)
-            return DMEntry.second;
+            return &E;
         }
       }
       return NULL;
@@ -135,15 +207,18 @@ class DataInfo {
       data_entry->alias_ptrs.push_back(alias_ptr);
       return true;
     }
-  
-    DataEntry* getDataEntry(FuncInfoEntry *fie) {
-      Function *f = fie->func;
-      for (auto DMEntry : DataMap) {
-        DataEntry *DE = DMEntry.second;
-        if (DE->func_map.find(f) != DE->func_map.end()) {
-          assert(fie == DE->func_map.find(f)->second);
-          return DE;
-        }
+
+    void newFuncArg(Function *f, Value *a, int an) {
+      FuncArgEntry E(f, a, an);
+      FuncArgs.push_back(E);
+      bool Succeed = E.tryInsertAliasPtr(a);
+      assert(Succeed);
+    }
+
+    FuncArgEntry* getFuncArgEntry(Function *f, int an) {
+      for (auto &E : FuncArgs) {
+        if (E.isMatch(f, an))
+          return &E;
       }
       return NULL;
     }

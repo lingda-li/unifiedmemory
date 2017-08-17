@@ -11,8 +11,6 @@
 #include "llvm/ADT/SmallSet.h"
 using namespace llvm;
 
-#define DEBUG_PRINT {errs() << "Error: "<< __LINE__ << "\n";}
-
 namespace {
   struct UVMTransformPass : public ModulePass {
     static char ID;
@@ -522,11 +520,11 @@ char UVMTransformPass::ID = 0;
 
 // Automatically enable the pass.
 // http://adriansampson.net/blog/clangpass.html
-static void registerUVMTransformPassPass(const PassManagerBuilder &,
+static void registerUVMTransformPass(const PassManagerBuilder &,
                          legacy::PassManagerBase &PM) {
   PM.add(new UVMTransformPass());
 }
 static RegisterStandardPasses
   RegisterMyPass(PassManagerBuilder::EP_EnabledOnOptLevel0,
   //RegisterMyPass(PassManagerBuilder::EP_ModuleOptimizerEarly,
-                 registerUVMTransformPassPass);
+                 registerUVMTransformPass);
