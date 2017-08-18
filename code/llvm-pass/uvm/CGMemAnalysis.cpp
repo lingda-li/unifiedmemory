@@ -26,7 +26,7 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
         Value *LoadAddr = LI->getOperand(0);
         if (FuncArgEntry *InsertEntry = FAI.getBaseAliasEntry(LoadAddr)) {
           if(FAI.tryInsertAliasEntry(InsertEntry, LI)) {
-            errs() << "  alias entry ";
+            errs() << "    alias entry ";
             LI->dump();
           }
         }
@@ -35,7 +35,7 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
         Value *StoreAddr = SI->getOperand(1);
         if (FuncArgEntry *InsertEntry = FAI.getAliasEntry(StoreContent)) {
           if(FAI.tryInsertBaseAliasEntry(InsertEntry, StoreAddr)) {
-            errs() << "  base alias entry ";
+            errs() << "    base alias entry ";
             StoreAddr->dump();
           }
         }
@@ -51,14 +51,14 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
         unsigned NumAlias = 0;
         if (auto *SourceEntry = FAI.getAliasEntry(CastSource)) {
           if (FAI.tryInsertAliasEntry(SourceEntry, BCI)) {
-            errs() << "  alias entry ";
+            errs() << "    alias entry ";
             BCI->dump();
             NumAlias++;
           }
         }
         if (auto *SourceEntry = FAI.getBaseAliasEntry(CastSource)) {
           if (FAI.tryInsertBaseAliasEntry(SourceEntry, BCI)) {
-            errs() << "  base alias entry ";
+            errs() << "    base alias entry ";
             BCI->dump();
             NumAlias++;
           }
@@ -69,7 +69,7 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
         Value *BasePtr = GEPI->getOperand(0);
         if (auto *SourceEntry = FAI.getAliasEntry(BasePtr)) {
           if (FAI.tryInsertAliasEntry(SourceEntry, GEPI)) {
-            errs() << "  alias entry ";
+            errs() << "    alias entry ";
             GEPI->dump();
           }
         }
@@ -89,14 +89,14 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
       if (auto *LI = dyn_cast<LoadInst>(&I)) {
         Value *LoadAddr = LI->getOperand(0);
         if (FuncArgEntry *E = FAI.getAliasEntry(LoadAddr)) {
-          errs() << "  load (" << Freq << ") from ";
+          errs() << "    load (" << Freq << ") from ";
           E->dumpBase();
           E->load_freq += Freq;
         }
       } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
         Value *StoreAddr = SI->getOperand(1);
         if (FuncArgEntry *E = FAI.getAliasEntry(StoreAddr)) {
-          errs() << "  store (" << Freq << ") to ";
+          errs() << "    store (" << Freq << ") to ";
           E->dumpBase();
           E->store_freq += Freq;
         }
@@ -109,7 +109,7 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
             assert(FAI.getBaseAliasEntry(OPD) == NULL);
             FuncArgEntry *FAE = FAI.getFuncArgEntry(CI->getCalledFunction(), i);
             if (FAE && FAE->getValid()) { // Could reach declaration here
-              errs() << "  call (" << Freq << ", " << FAE->getLoadFreq()
+              errs() << "    call (" << Freq << ", " << FAE->getLoadFreq()
                      << ", " << FAE->getStoreFreq() << ") using ";
               E->dumpBase();
               E->load_freq += Freq * FAE->getLoadFreq();
@@ -124,10 +124,10 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
 
   for (auto &E : *FAI.getEntries()) {
     if (E.isMatch(&F, -1)) {
-      errs() << "Frequency of ";
+      errs() << "  Frequency of ";
       E.dumpBase();
-      errs() << "  load is " << E.load_freq << "\n";
-      errs() << "  store is " << E.store_freq << "\n";
+      errs() << "    load is " << E.load_freq << "\n";
+      errs() << "    store is " << E.store_freq << "\n";
       E.setValid();
     }
   }

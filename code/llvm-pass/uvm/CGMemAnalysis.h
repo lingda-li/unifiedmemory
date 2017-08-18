@@ -14,6 +14,7 @@
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/Transforms/IPO/FunctionAttrs.h"
 #include "MemAccessDataStructure.h"
+using namespace llvm;
 
 struct FuncArgAccessCGInfoPass : public ModulePass {
   static char ID;
@@ -27,7 +28,6 @@ struct FuncArgAccessCGInfoPass : public ModulePass {
     errs() << "  ---- Function Argument Access Frequency CG Analysis ----\n";
     CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
     for (scc_iterator<CallGraph *> I = scc_begin(&CG); !I.isAtEnd(); ++I) {
-      errs() << I->size() << "\n";
       if (I->size() != 1)
         continue;
 

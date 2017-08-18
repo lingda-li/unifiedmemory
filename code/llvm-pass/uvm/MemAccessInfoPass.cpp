@@ -321,6 +321,7 @@ struct MemAccessInfoPass : public ModulePass {
                       ArgsByRef.push_back(FIE);
                       errs() << "  base alias entry (func arg) ";
                       A->dump();
+                      errs() << "Warning: cannot address base alias pointer as an argument yet";
                     }
                   }
                 }

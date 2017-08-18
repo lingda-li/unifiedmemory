@@ -1,7 +1,10 @@
-CUDA_PATH = /sw/summitdev/cuda/8.0.61-1/
-GPU_ARCH = sm_60
-#CUDA_PATH = /software/cuda/8.0/
-#GPU_ARCH = sm_35
+#CUDA_PATH = /sw/summitdev/cuda/8.0.61-1/
+#GPU_ARCH = sm_60
+CUDA_PATH = /software/cuda/8.0/
+GPU_ARCH = sm_35
+
+#PASS_NAME = UVMTransformPass
+PASS_NAME = MemAccessInfoPass
 
 CODE_PATH = `pwd`/../
 
@@ -13,7 +16,7 @@ endif
 OMP_COMPILE_FLAG = -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -I$(CUDA_PATH)/include -O3
 LINK_FLAG = -L$(CUDA_PATH)/lib64 -lcudart -ldl -lrt -pthread -lm $(CODE_PATH)/uvm-runtime/uvm-runtime.o
 IR_FLAG = -c -S -emit-llvm
-PASS_FLAG = -Xclang -load -Xclang $(CODE_PATH)/llvm-pass/build/uvm/libUVMTransformPass.so
+PASS_FLAG = -Xclang -load -Xclang $(CODE_PATH)/llvm-pass/build/uvm/lib$(PASS_NAME).so
 
 all: managed
 
@@ -23,6 +26,10 @@ test: test_m.cu
 managed: test_m.cu
 	clang $(COMPILE_FLAG) $(PASS_FLAG) $(IR_FLAG) test_m.cu
 	clang $(COMPILE_FLAG) $(PASS_FLAG) $(LINK_FLAG) test_m.cu -o test_m
+
+func: func.cu
+	clang $(COMPILE_FLAG) $(PASS_FLAG) $(IR_FLAG) func.cu
+#	clang $(COMPILE_FLAG) $(PASS_FLAG) $(LINK_FLAG) func.cu -o func 
 
 uvmapi: uvmapitest.cu uvmapitest_memcpy.cu
 	clang $(COMPILE_FLAG) $(LINK_FLAG) uvmapitest.cu -o uvmapitest
