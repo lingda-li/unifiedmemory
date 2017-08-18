@@ -3,8 +3,8 @@
 CUDA_PATH = /software/cuda/8.0/
 GPU_ARCH = sm_35
 
-#PASS_NAME = UVMTransformPass
-PASS_NAME = MemAccessInfoPass
+PASS_NAME = UVMTransformPass
+#PASS_NAME = MemAnalysisPass
 
 CODE_PATH = `pwd`/../
 

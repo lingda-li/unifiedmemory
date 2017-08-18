@@ -13,7 +13,7 @@
 #include "llvm/Analysis/CallGraphSCCPass.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/Transforms/IPO/FunctionAttrs.h"
-#include "MemAccessDataStructure.h"
+#include "MemAnalysisDataStructure.h"
 using namespace llvm;
 
 struct FuncArgAccessCGInfoPass : public ModulePass {
