@@ -14,7 +14,7 @@ __global__ void MyKernel(int *a, int *b, int size)
 {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     if(id < size)
-        b[id] = a[id] * 2;
+        b[id] = (a[id] >> 1) + a[id];
 }
 
 int main()

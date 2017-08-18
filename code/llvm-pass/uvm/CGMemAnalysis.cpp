@@ -89,14 +89,14 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
       if (auto *LI = dyn_cast<LoadInst>(&I)) {
         Value *LoadAddr = LI->getOperand(0);
         if (FuncArgEntry *E = FAI.getAliasEntry(LoadAddr)) {
-          errs() << "  load from ";
+          errs() << "  load (" << Freq << ") from ";
           E->dumpBase();
           E->load_freq += Freq;
         }
       } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
         Value *StoreAddr = SI->getOperand(1);
         if (FuncArgEntry *E = FAI.getAliasEntry(StoreAddr)) {
-          errs() << "  store to ";
+          errs() << "  store (" << Freq << ") to ";
           E->dumpBase();
           E->store_freq += Freq;
         }
@@ -107,14 +107,15 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
           DataEntry *E = FAI.getAliasEntry(OPD);
           if (E) {
             assert(FAI.getBaseAliasEntry(OPD) == NULL);
-            errs() << "  call using ";
-            E->dumpBase();
             FuncArgEntry *FAE = FAI.getFuncArgEntry(CI->getCalledFunction(), i);
             if (FAE && FAE->getValid()) { // Could reach declaration here
+              errs() << "  call (" << Freq << ", " << FAE->getLoadFreq()
+                     << ", " << FAE->getStoreFreq() << ") using ";
+              E->dumpBase();
               E->load_freq += Freq * FAE->getLoadFreq();
               E->store_freq += Freq * FAE->getStoreFreq();
             } else if (!CI->getCalledFunction()->isDeclaration())
-              errs() << "Warning: wrong traversal order or recursive call\n";
+              errs() << "Warning: wrong traversal order, or recursive call\n";
           }
         }
       }

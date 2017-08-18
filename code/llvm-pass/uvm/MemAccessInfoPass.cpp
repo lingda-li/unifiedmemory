@@ -87,7 +87,7 @@ struct MemAccessInfoPass : public ModulePass {
                   E->load_freq += Freq * FAE->getLoadFreq();
                   E->store_freq += Freq * FAE->getStoreFreq();
                 } else if (!CI->getCalledFunction()->isDeclaration()) // Could reach declaration here
-                  errs() << "Warning: wrong traversal order or recursive call\n";
+                  errs() << "Warning: wrong traversal order, or recursive call\n";
               }
             }
           }
