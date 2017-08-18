@@ -1,3 +1,6 @@
+#ifndef LLVM_UVM_PASS_DATASTRUCTURE_H
+#define LLVM_UVM_PASS_DATASTRUCTURE_H
+
 #include "llvm/Pass.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
@@ -231,3 +234,5 @@ class MemInfo {
       return NULL;
     }
 };
+
+#endif // LLVM_UVM_PASS_DATASTRUCTURE_H

@@ -67,6 +67,7 @@ endif(APPLE)
 add_library(MemAccessInfoPass MODULE
     # List your source files here.
     MemAccessInfoPass.cpp
+    CGMemAnalysis.cpp
 )
 
 # Use C++11 to compile our pass (i.e., supply -std=c++11).
