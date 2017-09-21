@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+//#define BLOCK_NUM 1
+
 //#define DEVICE_ALLOC
 #define UVM_ALLOC
 //#define HOST_ALLOC
@@ -8,11 +10,12 @@
 //#define SIZE (1024 * 8)
 //#define STEP 16
 
-//#define SIZE (1024 * 1024 * 8)
+//#define SIZE (1024 * 1024)
 //#define STEP (1024 * 32)
-//#define STEP 16
+//#define STEP 512
 
-#define SIZE (1024 * 1024 * 1024)
+//#define SIZE (1024 * 1024 * 1024)
+#define SIZE (512 * 64 * 27 * 25 * 7 * 11)
 //#define STEP (1024 * 1024 * 32)
 #define STEP (512)
 
@@ -39,7 +42,12 @@ __global__ void kernel(int *input, double *total_lat)
   totallat_s = maxlat_s = minlat_s = 0.0;
   llat_num = slat_num = 0;
 
-  for (unsigned long long i = 0; i < SIZE; i += STEP) {
+  unsigned long long begin = SIZE / BLOCK_NUM * blockIdx.x;
+  unsigned long long end = SIZE / BLOCK_NUM * (blockIdx.x + 1);
+  for (unsigned long long i = begin; i < end; i += STEP) {
+    //if (i == 1024 * 350) {
+    //  i += 1024 * 482;
+    //}
     t0 = clock();
     __syncthreads();
     s_tmp += input[i];
@@ -73,21 +81,23 @@ __global__ void kernel(int *input, double *total_lat)
         minlat_l = lat;
       llat_num++;
     }
+    //if (i >= 1024 * (849 - 1))
+    //  return;
   }
-  total_lat[0] = totallat;
+  atomicAdd(&total_lat[0], totallat);
   total_lat[1] = maxlat;
   total_lat[2] = minlat;
 
-  total_lat[4] = totallat_l;
+  atomicAdd(&total_lat[4], totallat_l);
   total_lat[5] = maxlat_l;
   total_lat[6] = minlat_l;
 
-  total_lat[7] = totallat_s;
+  atomicAdd(&total_lat[7], totallat_s);
   total_lat[8] = maxlat_s;
   total_lat[9] = minlat_s;
 
-  total_lat[10] = llat_num;
-  total_lat[11] = slat_num;
+  atomicAdd(&total_lat[10], (double)llat_num);
+  atomicAdd(&total_lat[11], (double)slat_num);
 }
 
 int main()
@@ -124,7 +134,7 @@ int main()
   }
 #endif
 
-  kernel<<<1, 1>>>(d_input, total_lat);
+  kernel<<<BLOCK_NUM, 1>>>(d_input, total_lat);
 
   cudaMemcpy(h_total_lat, total_lat, LAT_ARRAY_SIZE*sizeof(double), cudaMemcpyDeviceToHost);
   cudaFree(d_input);

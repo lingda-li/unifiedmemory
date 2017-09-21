@@ -8,9 +8,9 @@
 //#define SIZE (1024 * 8)
 //#define STEP 16
 
-//#define SIZE (1024 * 1024 * 8)
+//#define SIZE (1024 * 1024)
 //#define STEP (1024 * 32)
-//#define STEP 16
+//#define STEP 512
 
 #define SIZE (1024 * 1024 * 1024)
 //#define STEP (1024 * 1024 * 32)
@@ -40,6 +40,9 @@ __global__ void kernel(int *input, double *total_lat)
   llat_num = slat_num = 0;
 
   for (unsigned long long i = 0; i < SIZE; i += STEP) {
+    //if (i == 1024 * 350) {
+    //  i += 1024 * 482;
+    //}
     t0 = clock();
     __syncthreads();
     s_tmp += input[i];
@@ -73,6 +76,8 @@ __global__ void kernel(int *input, double *total_lat)
         minlat_l = lat;
       llat_num++;
     }
+    //if (i >= 1024 * (849 - 1))
+    //  return;
   }
   total_lat[0] = totallat;
   total_lat[1] = maxlat;

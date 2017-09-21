@@ -1,0 +1,153 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#define BLOCK_PER_SM 1
+#define SM_NUM 1
+#define BLOCK_NUM (SM_NUM * BLOCK_PER_SM)
+#define THREAD_PER_BLOCK 1
+#define TOTAL_NUM (BLOCK_NUM * THREAD_PER_BLOCK)
+
+//#define WARP_AWARE
+
+//#define DEVICE_ALLOC
+#define UVM_ALLOC
+//#define HOST_ALLOC
+
+#define SIZE (1024 * 1024 * 2L * TOTAL_NUM)
+#define STEP (512)
+//#define STEP (2048 * 2)
+
+#define LAT_ARRAY_SIZE 12
+#define LAT_LOWER_BOUND 10000
+#define LAT_HIGHER_BOUND 20000
+
+__global__ void kernel(int *input, double *total_lat)
+{
+  //unsigned t0, t1, lat;
+  __shared__ int s_tmp;
+  //double maxlat, minlat, totallat;
+  //double maxlat_l, minlat_l, totallat_l;
+  //double maxlat_s, minlat_s, totallat_s;
+  //unsigned llat_num, slat_num;
+
+  s_tmp = 0;
+  //totallat = maxlat = minlat = 0.0;
+  //totallat_l = maxlat_l = minlat_l = 0.0;
+  //totallat_s = maxlat_s = minlat_s = 0.0;
+  //llat_num = slat_num = 0;
+
+#ifdef WARP_AWARE
+  unsigned idx = blockIdx.x * blockDim.x + (threadIdx.x / 32);
+#else
+  unsigned idx = blockIdx.x * blockDim.x + threadIdx.x;
+#endif
+  unsigned long long begin = SIZE / TOTAL_NUM * idx;
+  unsigned long long end = SIZE / TOTAL_NUM * (idx + 1);
+  for (unsigned long long i = begin; i < end; i += STEP) {
+    //t0 = clock();
+    //__syncthreads();
+    s_tmp += input[i];
+    //__syncthreads();
+    //t1 = clock();
+    //lat = t1 - t0;
+    //totallat += lat;
+    //if (lat > maxlat)
+    //  maxlat = lat;
+    //if (lat < minlat || minlat == 0)
+    //  minlat = lat;
+
+    //// classify lat
+    //if (lat >= LAT_LOWER_BOUND && lat <= LAT_HIGHER_BOUND)
+    //  total_lat[3] += lat;
+    //else if (lat < LAT_LOWER_BOUND) {
+    //  totallat_s += lat;
+    //  if (lat > maxlat_s)
+    //    maxlat_s = lat;
+    //  if (lat < minlat_s || minlat_s == 0)
+    //    minlat_s = lat;
+    //  slat_num++;
+    //} else {
+    //  totallat_l += lat;
+    //  if (lat > maxlat_l)
+    //    maxlat_l = lat;
+    //  if (lat < minlat_l || minlat_l == 0)
+    //    minlat_l = lat;
+    //  llat_num++;
+    //}
+  }
+  //atomicAdd(&total_lat[0], totallat);
+  //total_lat[1] = maxlat;
+  //total_lat[2] = minlat;
+
+  //atomicAdd(&total_lat[4], totallat_l);
+  //total_lat[5] = maxlat_l;
+  //total_lat[6] = minlat_l;
+
+  //atomicAdd(&total_lat[7], totallat_s);
+  //total_lat[8] = maxlat_s;
+  //total_lat[9] = minlat_s;
+
+  //atomicAdd(&total_lat[10], (double)llat_num);
+  //atomicAdd(&total_lat[11], (double)slat_num);
+}
+
+int main()
+{
+  int *d_input;
+  double *total_lat, *h_total_lat;
+
+  h_total_lat = (double*)malloc(LAT_ARRAY_SIZE * sizeof(double));
+  cudaMalloc(&total_lat, LAT_ARRAY_SIZE*sizeof(double));
+  for (int i = 0; i < LAT_ARRAY_SIZE; i++)
+    h_total_lat[i] = 0.0;
+  cudaMemcpy(total_lat, h_total_lat, LAT_ARRAY_SIZE*sizeof(double), cudaMemcpyHostToDevice);
+#if defined(DEVICE_ALLOC)
+  cudaMalloc(&d_input, SIZE*sizeof(int));
+#elif defined(UVM_ALLOC)
+  cudaMallocManaged(&d_input, SIZE*sizeof(int));
+  cudaMemAdvise(d_input, SIZE*sizeof(int), cudaMemAdviseSetReadMostly, 0);
+#elif defined(HOST_ALLOC)
+  cudaMallocHost(&d_input, SIZE*sizeof(int));
+#else
+  return 0;
+#endif
+
+  // init
+#if defined(DEVICE_ALLOC)
+  int *h_input;
+  h_input = (int*)malloc(SIZE*sizeof(int));
+  for (unsigned long long i = 0; i < SIZE; i += STEP) {
+    h_input[i] = rand();
+  }
+  cudaMemcpy(d_input, h_input, SIZE*sizeof(int), cudaMemcpyHostToDevice);
+#elif defined(UVM_ALLOC) || defined(HOST_ALLOC)
+  for (unsigned long long i = 0; i < SIZE; i += STEP) {
+    d_input[i] = rand();
+  }
+#endif
+
+#ifdef WARP_AWARE
+  kernel<<<BLOCK_NUM, THREAD_PER_BLOCK * 32>>>(d_input, total_lat);
+#else
+  kernel<<<BLOCK_NUM, THREAD_PER_BLOCK>>>(d_input, total_lat);
+#endif
+
+  cudaMemcpy(h_total_lat, total_lat, LAT_ARRAY_SIZE*sizeof(double), cudaMemcpyDeviceToHost);
+  cudaFree(d_input);
+  cudaFree(total_lat);
+  double AvgLat = h_total_lat[0] / (SIZE / STEP);
+  printf("Average latency: %f (%f / %lld)\n", AvgLat, h_total_lat[0], SIZE / STEP);
+  printf("Max latency: %f\n", h_total_lat[1]);
+  printf("Min latency: %f\n", h_total_lat[2]);
+  printf("\n");
+  printf("Average latency (large): %f (%f / %f)\n", h_total_lat[4] / h_total_lat[10], h_total_lat[4], h_total_lat[10]);
+  printf("Max latency (large): %f\n", h_total_lat[5]);
+  printf("Min latency (large): %f\n", h_total_lat[6]);
+  printf("\n");
+  printf("Average latency (short): %f (%f / %f)\n", h_total_lat[7] / h_total_lat[11], h_total_lat[7], h_total_lat[11]);
+  printf("Max latency (short): %f\n", h_total_lat[8]);
+  printf("Min latency (short): %f\n", h_total_lat[9]);
+  printf("\n");
+  printf("Abnormal total: %f\n", h_total_lat[3]);
+  return 0;
+}

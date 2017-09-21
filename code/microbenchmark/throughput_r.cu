@@ -9,13 +9,15 @@
 //#define SIZE (1024 * 1024 * 1024)
 #define SIZE (1024 * 1024 * 1024L * 2)
 
+#define STEP 128
+
 __global__ void kernel(int *input, unsigned long long size)
 {
   unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
   __shared__ int s_tmp;
 
   if (i < size)
-    s_tmp += input[i];
+    s_tmp += input[i * STEP];
 }
 
 int main()
@@ -50,13 +52,13 @@ int main()
 #endif
 
   unsigned ThreadNum = 256;
-  unsigned long long BlockNum = (SIZE - 1) / ThreadNum + 1;
+  unsigned long long BlockNum = (SIZE / STEP - 1) / ThreadNum + 1;
 
   cudaEventCreate(&start);
   cudaEventCreate(&end);
   cudaEventRecord(start,0);
 
-  kernel<<<BlockNum, ThreadNum>>>(d_input, SIZE);
+  kernel<<<BlockNum, ThreadNum>>>(d_input, SIZE / STEP);
 
   cudaThreadSynchronize();
   cudaEventRecord(end, 0);
@@ -68,7 +70,7 @@ int main()
   cudaEventCreate(&end);
   cudaEventRecord(start,0);
 
-  kernel<<<BlockNum, ThreadNum>>>(d_input, SIZE);
+  kernel<<<BlockNum, ThreadNum>>>(d_input, SIZE / STEP);
 
   cudaThreadSynchronize();
   cudaEventRecord(end, 0);
@@ -80,7 +82,7 @@ int main()
   cudaEventCreate(&end);
   cudaEventRecord(start,0);
 
-  kernel<<<BlockNum, ThreadNum>>>(d_input, SIZE);
+  kernel<<<BlockNum, ThreadNum>>>(d_input, SIZE / STEP);
 
   cudaThreadSynchronize();
   cudaEventRecord(end, 0);
