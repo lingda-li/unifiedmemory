@@ -1,0 +1,219 @@
+#!/bin/bash
+
+#BSUB -P GEN010SOLLVE
+#BSUB -J gputest
+#BSUB -o log/page_thread.log
+#BSUB -W 240
+#BSUB -n 1
+#BSUB -q batch
+
+cd /ccs/home/lld/git/unifiedmem/code/microbenchmark
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=1 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 1"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=2 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 2"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=3 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 3"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=4 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 4"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=5 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 5"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=6 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 6"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=7 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 7"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=8 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 8"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=12 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 12"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=16 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 16"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=20 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 20"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=24 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 24"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=28 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 28"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=32 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 32"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=36 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 36"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=40 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 40"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=48 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 48"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=56 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 56"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=60 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 60"
+nvprof ./page_sm.out
+
+nvcc -Xcompiler -DTHREAD_PER_BLOCK=64 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out &> /dev/null
+echo "THREAD_PER_BLOCK: 64"
+nvprof ./page_sm.out
+
+#nvcc -Xcompiler -DBLOCK_PER_SM=1 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 1" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=2 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 2" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=3 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 3" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=4 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 4" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=5 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 5" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=6 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 6" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=7 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 7" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=8 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 8" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=9 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 9" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=10 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 10" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=11 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 11" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=12 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 12" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=13 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 13" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=14 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 14" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=15 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 15" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=16 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 16" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=17 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 17" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=18 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 18" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=19 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 19" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=20 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 20" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=21 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 21" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=22 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 22" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=23 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 23" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=24 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 24" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=25 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 25" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=26 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 26" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=27 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 27" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=28 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 28" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=29 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 29" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=30 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 30" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=31 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 31" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#
+#nvcc -Xcompiler -DBLOCK_PER_SM=32 -arch=sm_60 -O3 -Xptxas -v page_sm.cu -o page_sm.out
+#echo "BLOCK_PER_SM: 32" &>> log/page_sm_more.log
+#nvprof ./page_sm.out &>> log/page_sm_more.log
+#

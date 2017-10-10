@@ -2,21 +2,21 @@
 #include <stdlib.h>
 
 //#define DEVICE_ALLOC
-#define UVM_ALLOC
+//#define UVM_ALLOC
 //#define HOST_ALLOC
 
 //#define SIZE (1024 * 8)
 //#define STEP 16
 
-//#define SIZE (1024 * 1024 * 8)
+//#define SIZE (1024 * 1024)
 //#define STEP (1024 * 32)
-//#define STEP 16
+//#define STEP 1
 
-#define SIZE (1024 * 1024 * 1024)
+//#define SIZE (1024 * 1024 * 1024)
 //#define STEP (1024 * 1024 * 32)
-#define STEP (512)
+//#define STEP (512)
 
-//#define SIZE (1024 * 1024 * 1024L * 2)
+#define SIZE (1024 * 1024 * 1024L * 5)
 //#define STEP (1024 * 1024 * 32)
 
 //#define PRINT_LAT
@@ -28,24 +28,26 @@ __global__ void kernel(int *input, double *total_lat)
 {
   unsigned t0, t1, lat;
   __shared__ int s_tmp;
+  int tmp;
   double maxlat, minlat, totallat;
   double maxlat_l, minlat_l, totallat_l;
   double maxlat_s, minlat_s, totallat_s;
-  unsigned llat_num, slat_num;
+  double llat_num, slat_num;
 
   s_tmp = 0;
   totallat = maxlat = minlat = 0.0;
   totallat_l = maxlat_l = minlat_l = 0.0;
   totallat_s = maxlat_s = minlat_s = 0.0;
-  llat_num = slat_num = 0;
+  llat_num = slat_num = 0.0;
 
   for (unsigned long long i = 0; i < SIZE; i += STEP) {
     t0 = clock();
     __syncthreads();
-    s_tmp += input[i];
+    tmp = input[i];
     __syncthreads();
     t1 = clock();
     lat = t1 - t0;
+    s_tmp = tmp;
 #ifdef PRINT_LAT
     printf("0x%10llx: %d\n", i, lat);
 #endif
@@ -124,6 +126,8 @@ int main()
   }
 #endif
 
+  kernel<<<1, 1>>>(d_input, total_lat);
+  cudaDeviceSynchronize();
   kernel<<<1, 1>>>(d_input, total_lat);
 
   cudaMemcpy(h_total_lat, total_lat, LAT_ARRAY_SIZE*sizeof(double), cudaMemcpyDeviceToHost);

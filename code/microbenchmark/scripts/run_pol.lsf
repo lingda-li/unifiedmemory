@@ -1,0 +1,239 @@
+#!/bin/bash
+
+#BSUB -P GEN010SOLLVE
+#BSUB -J gputest
+#BSUB -o log/page_overlap_new.log
+#BSUB -W 240
+#BSUB -n 1
+#BSUB -q batch
+
+cd /ccs/home/lld/git/unifiedmem/code/microbenchmark
+
+nvcc -Xcompiler -DBLOCK_NUM=1 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 1"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=2 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 2"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=3 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 3"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=4 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 4"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=5 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 5"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=6 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 6"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=7 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 7"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=8 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 8"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=9 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 9"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=10 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 10"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=11 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 11"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=12 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 12"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=14 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 14"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=15 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 15"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=16 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 16"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=18 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 18"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=20 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 20"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=21 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 21"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=22 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 22"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=24 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 24"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=25 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 25"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=27 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 27"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=28 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 28"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=30 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 30"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=32 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 32"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=33 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 33"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=35 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 35"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=36 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 36"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=40 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 40"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=42 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 42"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=44 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 44"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=45 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 45"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=48 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 48"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=50 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 50"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=54 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 54"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=55 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 55"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=56 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 56"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=60 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 60"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=63 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 63"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=64 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 64"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=66 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 66"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=70 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 70"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=72 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 72"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=75 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 75"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=77 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 77"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=80 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 80"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=84 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 84"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=88 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 88"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=90 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 90"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=96 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 96"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=99 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 99"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=100 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 100"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=105 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 105"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=108 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 108"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=110 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 110"
+nvprof ./page_overlap.out
+
+nvcc -Xcompiler -DBLOCK_NUM=112 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+echo "BLOCK_NUM: 112"
+nvprof ./page_overlap.out
+
+#nvcc -Xcompiler -DBLOCK_NUM=1 -arch=sm_60 -O3 -Xptxas -v page_overlap.cu -o page_overlap.out &> /dev/null
+#echo "BLOCK_NUM: 1"
+#nvprof ./page_overlap.out
+#

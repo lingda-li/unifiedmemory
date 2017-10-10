@@ -9,6 +9,18 @@ COMPILE_FLAG = -arch=$(GPU_ARCH) -O3 -Xptxas -v
 #GPUCC = clang
 #COMPILE_FLAG = --cuda-gpu-arch=$(GPU_ARCH) -I$(CUDA_PATH)/include -L$(CUDA_PATH)/lib64 -lcudart -ldl -lrt -pthread -lm -O3
 
+ifdef STEP
+  COMPILE_FLAG += -Xcompiler -DSTEP=$(STEP)
+endif
+
+ifdef SIZE
+  COMPILE_FLAG += -Xcompiler -DSIZE=$(SIZE)
+endif
+
+ifdef ALLOC
+  COMPILE_FLAG += -Xcompiler -D$(ALLOC)
+endif
+
 all:
 	$(GPUCC) $(COMPILE_FLAG) latency.cu -o latency.out
 	$(GPUCC) $(COMPILE_FLAG) throughput_rw.cu -o throughput_rw.out

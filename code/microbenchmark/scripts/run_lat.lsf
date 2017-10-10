@@ -1,0 +1,290 @@
+#!/bin/bash
+
+#BSUB -P GEN010SOLLVE
+#BSUB -J gputest
+#BSUB -o log/lat_20GB_um.log
+#BSUB -W 240
+#BSUB -n 1
+#BSUB -q batch
+
+cd /ccs/home/lld/git/unifiedmem/code/microbenchmark
+
+make lat ALLOC=UVM_ALLOC STEP=1  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=2  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=4  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=8  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=16  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=32  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=64  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=128  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=256  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=512  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=1024  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=2048  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=4096  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=8192  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=16384  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=32768  &> /dev/null
+./latency.out
+make lat ALLOC=UVM_ALLOC STEP=65536  &> /dev/null
+./latency.out
+
+#make lat ALLOC=HOST_ALLOC STEP=1  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=2  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=4  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=8  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=16  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=32  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=64  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=128  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=256  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=512  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=1024  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=2048  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=4096  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=8192  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=16384  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=32768  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC STEP=65536  &> /dev/null
+#./latency.out
+
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=1  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=2  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=4  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=8  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=16  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=32  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=64  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=128  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=256  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=512  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=1024  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=2048  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=4096  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=8192  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=16384  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=32768  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1073741824 STEP=65536  &> /dev/null
+#./latency.out
+
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=1  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=2  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=4  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=8  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=16  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=32  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=64  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=128  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=256  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=512  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=1024  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=2048  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=4096  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=8192  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=16384  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=32768  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1073741824 STEP=65536  &> /dev/null
+#./latency.out
+
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=1  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=2  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=4  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=8  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=16  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=32  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=64  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=128  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=256  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=512  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=1024  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=2048  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=4096  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=8192  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=16384  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=32768  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1073741824 STEP=65536  &> /dev/null
+#./latency.out
+
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=1  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=2  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=4  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=8  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=16  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=32  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=64  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=128  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=256  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=512  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=1024  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=2048  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=4096  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=8192  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=16384  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=32768  &> /dev/null
+#./latency.out
+#make lat ALLOC=UVM_ALLOC SIZE=1048576 STEP=65536  &> /dev/null
+#./latency.out
+
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=1  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=2  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=4  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=8  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=16  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=32  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=64  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=128  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=256  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=512  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=1024  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=2048  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=4096  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=8192  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=16384  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=32768  &> /dev/null
+#./latency.out
+#make lat ALLOC=HOST_ALLOC SIZE=1048576 STEP=65536  &> /dev/null
+#./latency.out
+
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=1  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=2  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=4  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=8  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=16  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=32  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=64  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=128  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=256  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=512  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=1024  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=2048  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=4096  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=8192  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=16384  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=32768  &> /dev/null
+#./latency.out
+#make lat ALLOC=DEVICE_ALLOC SIZE=1048576 STEP=65536  &> /dev/null
+#./latency.out

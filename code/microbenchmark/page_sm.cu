@@ -4,7 +4,7 @@
 #define BLOCK_PER_SM 1
 #define SM_NUM 1
 #define BLOCK_NUM (SM_NUM * BLOCK_PER_SM)
-#define THREAD_PER_BLOCK 1
+//#define THREAD_PER_BLOCK 32
 #define TOTAL_NUM (BLOCK_NUM * THREAD_PER_BLOCK)
 
 //#define WARP_AWARE
@@ -13,7 +13,8 @@
 #define UVM_ALLOC
 //#define HOST_ALLOC
 
-#define SIZE (1024 * 1024 * 2L * TOTAL_NUM)
+//#define SIZE (1024 * 1024 * 2L * TOTAL_NUM)
+#define SIZE (1024 * 1024 * 9 * 7 * 5)
 #define STEP (512)
 //#define STEP (2048 * 2)
 
@@ -24,6 +25,7 @@
 __global__ void kernel(int *input, double *total_lat)
 {
   //unsigned t0, t1, lat;
+  int tmp;
   __shared__ int s_tmp;
   //double maxlat, minlat, totallat;
   //double maxlat_l, minlat_l, totallat_l;
@@ -46,10 +48,11 @@ __global__ void kernel(int *input, double *total_lat)
   for (unsigned long long i = begin; i < end; i += STEP) {
     //t0 = clock();
     //__syncthreads();
-    s_tmp += input[i];
+    tmp = input[i];
     //__syncthreads();
     //t1 = clock();
     //lat = t1 - t0;
+    s_tmp += tmp;
     //totallat += lat;
     //if (lat > maxlat)
     //  maxlat = lat;

@@ -22,7 +22,6 @@
 //#define SIZE (1024 * 1024 * 1024L * 2)
 //#define STEP (1024 * 1024 * 32)
 
-//#define PRINT_LAT
 #define LAT_ARRAY_SIZE 12
 #define LAT_LOWER_BOUND 10000
 #define LAT_HIGHER_BOUND 20000
@@ -30,74 +29,71 @@
 __global__ void kernel(int *input, double *total_lat)
 {
   unsigned t0, t1, lat;
+  int tmp;
   __shared__ int s_tmp;
-  double maxlat, minlat, totallat;
-  double maxlat_l, minlat_l, totallat_l;
-  double maxlat_s, minlat_s, totallat_s;
-  unsigned llat_num, slat_num;
+  //double maxlat, minlat, totallat;
+  //double maxlat_l, minlat_l, totallat_l;
+  //double maxlat_s, minlat_s, totallat_s;
+  //unsigned llat_num, slat_num;
 
-  s_tmp = 0;
-  totallat = maxlat = minlat = 0.0;
-  totallat_l = maxlat_l = minlat_l = 0.0;
-  totallat_s = maxlat_s = minlat_s = 0.0;
-  llat_num = slat_num = 0;
+  //s_tmp = 0;
+  //totallat = maxlat = minlat = 0.0;
+  //totallat_l = maxlat_l = minlat_l = 0.0;
+  //totallat_s = maxlat_s = minlat_s = 0.0;
+  //llat_num = slat_num = 0;
 
   unsigned long long begin = SIZE / BLOCK_NUM * blockIdx.x;
   unsigned long long end = SIZE / BLOCK_NUM * (blockIdx.x + 1);
   for (unsigned long long i = begin; i < end; i += STEP) {
-    //if (i == 1024 * 350) {
-    //  i += 1024 * 482;
-    //}
-    t0 = clock();
-    __syncthreads();
-    s_tmp += input[i];
-    __syncthreads();
-    t1 = clock();
-    lat = t1 - t0;
-#ifdef PRINT_LAT
-    printf("0x%10llx: %d\n", i, lat);
-#endif
-    totallat += lat;
-    if (lat > maxlat)
-      maxlat = lat;
-    if (lat < minlat || minlat == 0)
-      minlat = lat;
+    //t0 = clock();
+    //__syncthreads();
+    tmp = input[i];
+    //__syncthreads();
+    //t1 = clock();
+    //lat = t1 - t0;
+    s_tmp += tmp;
+    //totallat += lat;
+    //if (lat > maxlat)
+    //  maxlat = lat;
+    //if (lat < minlat || minlat == 0)
+    //  minlat = lat;
+    //printf("1\n");
 
-    // classify lat
-    if (lat >= LAT_LOWER_BOUND && lat <= LAT_HIGHER_BOUND)
-      total_lat[3] += lat;
-    else if (lat < LAT_LOWER_BOUND) {
-      totallat_s += lat;
-      if (lat > maxlat_s)
-        maxlat_s = lat;
-      if (lat < minlat_s || minlat_s == 0)
-        minlat_s = lat;
-      slat_num++;
-    } else {
-      totallat_l += lat;
-      if (lat > maxlat_l)
-        maxlat_l = lat;
-      if (lat < minlat_l || minlat_l == 0)
-        minlat_l = lat;
-      llat_num++;
-    }
+    //// classify lat
+    //if (lat >= LAT_LOWER_BOUND && lat <= LAT_HIGHER_BOUND)
+    //  total_lat[3] += lat;
+    //else if (lat < LAT_LOWER_BOUND) {
+    //  totallat_s += lat;
+    //  if (lat > maxlat_s)
+    //    maxlat_s = lat;
+    //  if (lat < minlat_s || minlat_s == 0)
+    //    minlat_s = lat;
+    //  slat_num++;
+    //} else {
+    //  totallat_l += lat;
+    //  if (lat > maxlat_l)
+    //    maxlat_l = lat;
+    //  if (lat < minlat_l || minlat_l == 0)
+    //    minlat_l = lat;
+    //  llat_num++;
+    //}
     //if (i >= 1024 * (849 - 1))
     //  return;
   }
-  atomicAdd(&total_lat[0], totallat);
-  total_lat[1] = maxlat;
-  total_lat[2] = minlat;
+  //atomicAdd(&total_lat[0], totallat);
+  //total_lat[1] = maxlat;
+  //total_lat[2] = minlat;
 
-  atomicAdd(&total_lat[4], totallat_l);
-  total_lat[5] = maxlat_l;
-  total_lat[6] = minlat_l;
+  //atomicAdd(&total_lat[4], totallat_l);
+  //total_lat[5] = maxlat_l;
+  //total_lat[6] = minlat_l;
 
-  atomicAdd(&total_lat[7], totallat_s);
-  total_lat[8] = maxlat_s;
-  total_lat[9] = minlat_s;
+  //atomicAdd(&total_lat[7], totallat_s);
+  //total_lat[8] = maxlat_s;
+  //total_lat[9] = minlat_s;
 
-  atomicAdd(&total_lat[10], (double)llat_num);
-  atomicAdd(&total_lat[11], (double)slat_num);
+  //atomicAdd(&total_lat[10], (double)llat_num);
+  //atomicAdd(&total_lat[11], (double)slat_num);
 }
 
 int main()
