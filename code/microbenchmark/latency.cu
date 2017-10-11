@@ -19,6 +19,8 @@
 #define SIZE (1024 * 1024 * 1024L * 5)
 //#define STEP (1024 * 1024 * 32)
 
+#define NO_REPLACE
+
 //#define PRINT_LAT
 #define LAT_ARRAY_SIZE 12
 #define LAT_LOWER_BOUND 10000
@@ -124,6 +126,10 @@ int main()
   for (unsigned long long i = 0; i < SIZE; i += STEP) {
     d_input[i] = rand();
   }
+#endif
+
+#if defined(NO_REPLACE) && defined(UVM_ALLOC)
+  cudaMemAdvise(d_input, SIZE*sizeof(int), cudaMemAdviseSetReadMostly, 0);
 #endif
 
   kernel<<<1, 1>>>(d_input, total_lat);
