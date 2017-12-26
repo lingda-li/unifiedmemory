@@ -1,10 +1,11 @@
-#CUDA_PATH = /sw/summitdev/cuda/8.0.61-1/
-#GPU_ARCH = sm_60
-CUDA_PATH = /software/cuda/8.0/
-GPU_ARCH = sm_35
+CUDA_PATH = /sw/summitdev/cuda/8.0.61-1/
+GPU_ARCH = sm_60
+#CUDA_PATH = /software/cuda/8.0/
+#GPU_ARCH = sm_35
 
-PASS_NAME = UVMTransformPass
+#PASS_NAME = UVMTransformPass
 #PASS_NAME = MemAnalysisPass
+PASS_NAME = OMPPass
 
 CODE_PATH = `pwd`/../
 
@@ -40,7 +41,8 @@ uvmapiir: uvmapitest.cu uvmapitest_memcpy.cu
 	clang $(COMPILE_FLAG) $(IR_FLAG) uvmapitest_memcpy.cu
 
 omp: omp_m.c
-	clang $(OMP_COMPILE_FLAG) $(LINK_FLAG) omp_m.c -o omp_m
+	clang $(OMP_COMPILE_FLAG) $(IR_FLAG) $(PASS_FLAG) omp_m.c
+#	clang $(OMP_COMPILE_FLAG) $(LINK_FLAG) $(PASS_FLAG) omp_m.c -o omp_m
 
 clean:
 	rm core.* *.bc *.ll
