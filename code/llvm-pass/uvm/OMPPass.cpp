@@ -22,8 +22,7 @@ namespace {
       for (Function &F : M) {
         if (F.isDeclaration())
           continue;
-        errs() << "  " << F.getName() << "\n";
-        //F.dump();
+        errs() << "  func: " << F.getName() << "\n";
         for (auto &BB : F) {
           for (auto &I : BB) {
             if (auto *CI = dyn_cast<CallInst>(&I)) {
@@ -31,12 +30,10 @@ namespace {
               if (Callee && Callee->getName() == "__tgt_target_teams") {
                 errs() << "  target call: ";
                 CI->dump();
-                CI->getArgOperand(1)->dump();
                 if (auto *CE = dyn_cast<ConstantExpr>(CI->getArgOperand(6))) {
                   if (auto *GV = dyn_cast<GlobalVariable>(CE->getOperand(0))) {
                     GV->dump();
                     if (auto *C = dyn_cast<ConstantDataArray>(GV->getOperand(0))) {
-                      C->dump();
                       SmallVector<unsigned, 16> MapTypes;
                       bool LocalChanged = false;
                       for (unsigned i = 0; i < C->getNumElements(); i++) {
@@ -46,8 +43,6 @@ namespace {
                         if (V & 0x01 || V & 0x02) {
                           V &= ~0x03;
                           V |= 0x100;
-                          auto *NCI = ConstantInt::get(ConstantI->getType(), V);
-                          NCI->dump();
                           LocalChanged = true;
                         }
                         MapTypes.push_back(V);
@@ -55,7 +50,8 @@ namespace {
                       if (LocalChanged) {
                         auto *NCDA = ConstantDataArray::get(C->getContext(), MapTypes);
                         C->replaceAllUsesWith(NCDA);
-                        errs() << "  map type changed: ";
+                        errs() << "    map type changed: ";
+                        GV->dump();
                         Changed = true;
                       }
                     }
@@ -68,7 +64,6 @@ namespace {
                   if (auto *GV = dyn_cast<GlobalVariable>(CE->getOperand(0))) {
                     GV->dump();
                     if (auto *C = dyn_cast<ConstantDataArray>(GV->getOperand(0))) {
-                      C->dump();
                       SmallVector<unsigned, 16> MapTypes;
                       bool LocalChanged = false;
                       for (unsigned i = 0; i < C->getNumElements(); i++) {
@@ -78,7 +73,6 @@ namespace {
                         if (V & 0x01 || V & 0x02) {
                           V &= ~0x03;
                           V |= 0x100;
-                          auto *NCI = ConstantInt::get(ConstantI->getType(), V);
                           LocalChanged = true;
                         }
                         MapTypes.push_back(V);
@@ -86,7 +80,7 @@ namespace {
                       if (LocalChanged) {
                         auto *NCDA = ConstantDataArray::get(C->getContext(), MapTypes);
                         C->replaceAllUsesWith(NCDA);
-                        errs() << "  map type changed: ";
+                        errs() << "    map type changed: ";
                         GV->dump();
                         Changed = true;
                       }
