@@ -1,4 +1,5 @@
-CUDA_PATH = /sw/summitdev/cuda/8.0.61-1/
+CUDA_PATH = /sw/summitdev/cuda/9.0.69/
+#CUDA_PATH = /sw/summitdev/cuda/8.0.61-1/
 GPU_ARCH = sm_60
 #CUDA_PATH = /software/cuda/8.0/
 #GPU_ARCH = sm_35
@@ -38,6 +39,9 @@ page_ol:
 
 page_sm:
 	$(GPUCC) $(COMPILE_FLAG) page_sm.cu -o page_sm.out
+
+mgpu:
+	$(GPUCC) $(COMPILE_FLAG) mgpu_lat.cu -o mgpu_lat.out
 
 clean:
 	-rm *.out
