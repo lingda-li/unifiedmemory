@@ -21,7 +21,7 @@
 //#define SIZE (1024 * 1024 * 512L * 7)
 //#define STEP (1024 * 1024 * 32)
 
-#define PRINT_LAT
+//#define PRINT_LAT
 
 #define LAT_ARRAY_SIZE 12
 #define LAT_LOWER_BOUND 3000
@@ -37,7 +37,7 @@ __global__ void warmup(int *input, int gid, int gnum)
   }
 }
 
-__global__ void kernel(int *input, double *total_lat)
+__global__ void kernel(int *input, double *total_lat, unsigned long long size)
 {
   unsigned t0, t1, lat;
   __shared__ int s_tmp;
@@ -53,7 +53,7 @@ __global__ void kernel(int *input, double *total_lat)
   totallat_s = maxlat_s = minlat_s = 0.0;
   llat_num = slat_num = 0.0;
 
-  for (unsigned long long i = 0; i < SIZE; i += STEP) {
+  for (unsigned long long i = 0; i < size; i += STEP) {
     t0 = clock();
     __syncthreads();
     tmp = input[i];
@@ -150,11 +150,10 @@ int main()
   }
 
   cudaSetDevice(0);
-  kernel<<<1, 1>>>(d_input, total_lat);
+  kernel<<<1, 1>>>(d_input, total_lat, SIZE/2);
+  cudaDeviceSynchronize();
 
   cudaMemcpy(h_total_lat, total_lat, LAT_ARRAY_SIZE*sizeof(double), cudaMemcpyDeviceToHost);
-  cudaFree(d_input);
-  cudaFree(total_lat);
   double AvgLat = h_total_lat[0] / (SIZE / STEP);
   printf("Average latency: %f (%f / %lld)\n", AvgLat, h_total_lat[0], SIZE / STEP);
   printf("Max latency: %f\n", h_total_lat[1]);
@@ -169,5 +168,27 @@ int main()
   printf("Min latency (short): %f\n", h_total_lat[9]);
   printf("\n");
   printf("Abnormal total: %f\n", h_total_lat[3]);
+
+  kernel<<<1, 1>>>(&d_input[SIZE/2], total_lat, SIZE/2);
+  cudaDeviceSynchronize();
+
+  cudaMemcpy(h_total_lat, total_lat, LAT_ARRAY_SIZE*sizeof(double), cudaMemcpyDeviceToHost);
+  AvgLat = h_total_lat[0] / (SIZE / STEP);
+  printf("Average latency: %f (%f / %lld)\n", AvgLat, h_total_lat[0], SIZE / STEP);
+  printf("Max latency: %f\n", h_total_lat[1]);
+  printf("Min latency: %f\n", h_total_lat[2]);
+  printf("\n");
+  printf("Average latency (large): %f (%f / %f)\n", h_total_lat[4] / h_total_lat[10], h_total_lat[4], h_total_lat[10]);
+  printf("Max latency (large): %f\n", h_total_lat[5]);
+  printf("Min latency (large): %f\n", h_total_lat[6]);
+  printf("\n");
+  printf("Average latency (short): %f (%f / %f)\n", h_total_lat[7] / h_total_lat[11], h_total_lat[7], h_total_lat[11]);
+  printf("Max latency (short): %f\n", h_total_lat[8]);
+  printf("Min latency (short): %f\n", h_total_lat[9]);
+  printf("\n");
+  printf("Abnormal total: %f\n", h_total_lat[3]);
+
+  cudaFree(d_input);
+  cudaFree(total_lat);
   return 0;
 }
