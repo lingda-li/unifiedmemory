@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 //#define DEVICE_ALLOC
-#define UVM_ALLOC
+//#define UVM_ALLOC
 
 #define BLOCK_PER_SM 8
 #define SM_NUM 56
@@ -10,7 +10,7 @@
 #define THREAD_PER_BLOCK 256
 #define TOTAL_NUM (BLOCK_NUM * THREAD_PER_BLOCK)
 
-#define SIZE (1024 * 1024 * 9 * 7 * 5 * 8L)
+//#define SIZE (1024 * 1024 * 9 * 7 * 5 * 8L)
 //#define STEP (512)
 #define STEP (1)
 
@@ -79,13 +79,13 @@ int main()
   int *h_input;
   h_input = (int*)malloc(SIZE*sizeof(int));
   for (unsigned long long i = 0; i < SIZE; i++) {
-    h_input[i] = rand();
+    h_input[i] = i;
   }
   timer time_in;
   cudaMemcpy(d_input, h_input, SIZE*sizeof(int), cudaMemcpyHostToDevice);
 #elif defined(UVM_ALLOC)
   for (unsigned long long i = 0; i < SIZE; i++) {
-    d_input[i] = rand();
+    d_input[i] = i;
   }
   timer time_in;
 #endif
