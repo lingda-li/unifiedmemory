@@ -16,15 +16,16 @@
 //#define STEP (1024 * 1024 * 32)
 //#define STEP (512)
 
-#define SIZE (1024 * 1024 * 1024L * 5)
+//#define SIZE (1024 * 1024 * 1024L * 5)
+//#define SIZE (1024 * 1024 * 512L * 7)
 //#define STEP (1024 * 1024 * 32)
 
-#define NO_REPLACE
+//#define NO_REPLACE
 
 //#define PRINT_LAT
 #define LAT_ARRAY_SIZE 12
-#define LAT_LOWER_BOUND 10000
-#define LAT_HIGHER_BOUND 20000
+#define LAT_LOWER_BOUND 3000
+#define LAT_HIGHER_BOUND 10000
 
 __global__ void kernel(int *input, double *total_lat)
 {
@@ -132,13 +133,11 @@ int main()
   cudaMemAdvise(d_input, SIZE*sizeof(int), cudaMemAdviseSetReadMostly, 0);
 #endif
 
-  kernel<<<1, 1>>>(d_input, total_lat);
-  cudaDeviceSynchronize();
+  //kernel<<<1, 1>>>(d_input, total_lat);
+  //cudaDeviceSynchronize();
   kernel<<<1, 1>>>(d_input, total_lat);
 
   cudaMemcpy(h_total_lat, total_lat, LAT_ARRAY_SIZE*sizeof(double), cudaMemcpyDeviceToHost);
-  cudaFree(d_input);
-  cudaFree(total_lat);
   double AvgLat = h_total_lat[0] / (SIZE / STEP);
   printf("Average latency: %f (%f / %lld)\n", AvgLat, h_total_lat[0], SIZE / STEP);
   printf("Max latency: %f\n", h_total_lat[1]);
@@ -153,5 +152,7 @@ int main()
   printf("Min latency (short): %f\n", h_total_lat[9]);
   printf("\n");
   printf("Abnormal total: %f\n", h_total_lat[3]);
+  cudaFree(d_input);
+  cudaFree(total_lat);
   return 0;
 }

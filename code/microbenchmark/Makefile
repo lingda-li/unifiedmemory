@@ -43,5 +43,8 @@ page_sm:
 mgpu:
 	$(GPUCC) $(COMPILE_FLAG) mgpu_lat.cu -o mgpu_lat.out
 
+access_sparse:
+	$(GPUCC) $(COMPILE_FLAG) access_sparse.cu -o access_sparse.out
+
 clean:
 	-rm *.out
