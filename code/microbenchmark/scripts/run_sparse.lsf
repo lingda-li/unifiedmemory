@@ -1,0 +1,110 @@
+#!/bin/bash
+
+#BSUB -nnodes 1
+#BSUB -P GEN010SOLLVE
+#BSUB -J lattest
+#BSUB -o log/lat_14GB_um_3.log
+#BSUB -W 240
+#BSUB -q batch
+
+cd /ccs/home/lld/git/unifiedmem/code/microbenchmark
+
+#make access_sparse ALLOC=UVM_ALLOC SIZE=1024*1024*9*7*5*1L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=UVM_ALLOC SIZE=1024*1024*9*7*5*2L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=UVM_ALLOC SIZE=1024*1024*9*7*5*3L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=UVM_ALLOC SIZE=1024*1024*9*7*5*4L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=UVM_ALLOC SIZE=1024*1024*9*7*5*5L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=UVM_ALLOC SIZE=1024*1024*9*7*5*6L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=UVM_ALLOC SIZE=1024*1024*9*7*5*7L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=UVM_ALLOC SIZE=1024*1024*9*7*5*8L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=UVM_ALLOC SIZE=1024*1024*9*7*5*9L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=UVM_ALLOC SIZE=1024*1024*9*7*5*10L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=UVM_ALLOC SIZE=1024*1024*9*7*5*11L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=UVM_ALLOC SIZE=1024*1024*9*7*5*12L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+
+#make access_sparse ALLOC=DEVICE_ALLOC SIZE=1024*1024*9*7*5*1L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC SIZE=1024*1024*9*7*5*2L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC SIZE=1024*1024*9*7*5*3L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC SIZE=1024*1024*9*7*5*4L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC SIZE=1024*1024*9*7*5*5L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC SIZE=1024*1024*9*7*5*6L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC SIZE=1024*1024*9*7*5*7L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC SIZE=1024*1024*9*7*5*8L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC SIZE=1024*1024*9*7*5*9L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC SIZE=1024*1024*9*7*5*10L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC SIZE=1024*1024*9*7*5*11L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC SIZE=1024*1024*9*7*5*12L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+
+#make access_sparse ALLOC=DEVICE_ALLOC DEV_SIZE=1024*1024*9*7*5*1L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC DEV_SIZE=1024*1024*9*7*5*2L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC DEV_SIZE=1024*1024*9*7*5*3L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC DEV_SIZE=1024*1024*9*7*5*4L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC DEV_SIZE=1024*1024*9*7*5*5L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC DEV_SIZE=1024*1024*9*7*5*6L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC DEV_SIZE=1024*1024*9*7*5*7L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC DEV_SIZE=1024*1024*9*7*5*8L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC DEV_SIZE=1024*1024*9*7*5*9L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC DEV_SIZE=1024*1024*9*7*5*10L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC DEV_SIZE=1024*1024*9*7*5*11L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+#make access_sparse ALLOC=DEVICE_ALLOC DEV_SIZE=1024*1024*9*7*5*12L  &> /dev/null
+#jsrun -n1 nvprof ./access_sparse.out
+
+make access_sparse ALLOC=UVM_ALLOC DEV_SIZE=1024*1024*9*7*5*1L  &> /dev/null
+jsrun -n1 nvprof ./access_sparse.out
+make access_sparse ALLOC=UVM_ALLOC DEV_SIZE=1024*1024*9*7*5*2L  &> /dev/null
+jsrun -n1 nvprof ./access_sparse.out
+make access_sparse ALLOC=UVM_ALLOC DEV_SIZE=1024*1024*9*7*5*3L  &> /dev/null
+jsrun -n1 nvprof ./access_sparse.out
+make access_sparse ALLOC=UVM_ALLOC DEV_SIZE=1024*1024*9*7*5*4L  &> /dev/null
+jsrun -n1 nvprof ./access_sparse.out
+make access_sparse ALLOC=UVM_ALLOC DEV_SIZE=1024*1024*9*7*5*5L  &> /dev/null
+jsrun -n1 nvprof ./access_sparse.out
+make access_sparse ALLOC=UVM_ALLOC DEV_SIZE=1024*1024*9*7*5*6L  &> /dev/null
+jsrun -n1 nvprof ./access_sparse.out
+make access_sparse ALLOC=UVM_ALLOC DEV_SIZE=1024*1024*9*7*5*7L  &> /dev/null
+jsrun -n1 nvprof ./access_sparse.out
+make access_sparse ALLOC=UVM_ALLOC DEV_SIZE=1024*1024*9*7*5*8L  &> /dev/null
+jsrun -n1 nvprof ./access_sparse.out
+make access_sparse ALLOC=UVM_ALLOC DEV_SIZE=1024*1024*9*7*5*9L  &> /dev/null
+jsrun -n1 nvprof ./access_sparse.out
+make access_sparse ALLOC=UVM_ALLOC DEV_SIZE=1024*1024*9*7*5*10L  &> /dev/null
+jsrun -n1 nvprof ./access_sparse.out
+make access_sparse ALLOC=UVM_ALLOC DEV_SIZE=1024*1024*9*7*5*11L  &> /dev/null
+jsrun -n1 nvprof ./access_sparse.out
+make access_sparse ALLOC=UVM_ALLOC DEV_SIZE=1024*1024*9*7*5*12L  &> /dev/null
+jsrun -n1 nvprof ./access_sparse.out

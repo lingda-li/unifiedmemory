@@ -18,6 +18,10 @@ ifdef SIZE
   COMPILE_FLAG += -Xcompiler -DSIZE=$(SIZE)
 endif
 
+ifdef DEV_SIZE
+  COMPILE_FLAG += -Xcompiler -DDEV_SIZE=$(DEV_SIZE)
+endif
+
 ifdef ALLOC
   COMPILE_FLAG += -Xcompiler -D$(ALLOC)
 endif
@@ -45,6 +49,9 @@ mgpu:
 
 access_sparse:
 	$(GPUCC) $(COMPILE_FLAG) access_sparse.cu -o access_sparse.out
+
+access_locality:
+	$(GPUCC) $(COMPILE_FLAG) access_locality.cu -o access_locality.out
 
 clean:
 	-rm *.out
