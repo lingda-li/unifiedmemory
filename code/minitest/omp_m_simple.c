@@ -69,13 +69,14 @@ int main()
 #endif
 
 #if defined(MAP_ALL)
-#pragma omp target teams distribute parallel for map(to:size) map(to:d_a[0:size]) map(to:d_b[0:size]) map(from:d_c[0:size])
+#pragma omp target teams distribute parallel for map(to:d_a[0:size]) map(to:d_b[0:size]) map(from:d_c[0:size])
 #elif defined(OMP_ALLOC)
-#pragma omp target teams distribute parallel for map(to:size) is_device_ptr(d_a) is_device_ptr(d_b) is_device_ptr(d_c)
+//#pragma omp target teams distribute parallel for map(to:size) is_device_ptr(d_a) is_device_ptr(d_b) is_device_ptr(d_c)
+#pragma omp target teams distribute parallel for is_device_ptr(d_a) is_device_ptr(d_b) is_device_ptr(d_c)
 #elif defined(HYB_ALLOC)
-#pragma omp target teams distribute parallel for map(to:size) map(to:d_a[0:size]) map(to:d_b[0:size]) is_device_ptr(d_c)
+#pragma omp target teams distribute parallel for map(to:d_a[0:size]) map(to:d_b[0:size]) is_device_ptr(d_c)
 #else
-#pragma omp target teams distribute parallel for map(to:size) map(to:d_a[0:size]) map(to:d_b[0:size]) map(from:d_c[0:size])
+#pragma omp target teams distribute parallel for map(to:d_a[0:size]) map(to:d_b[0:size]) map(from:d_c[0:size])
 #endif
     for (uint64_t i = 0; i < size; i++) {
         d_c[i] = d_a[i] + d_b[i];

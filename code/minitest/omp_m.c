@@ -17,11 +17,13 @@
 //#define HOST_ALLOC
 //#define DEVICE_ALLOC
 
+#define MAP_ALL
+
 //#define NO_HOST_ACCESS
 #define SEC_CALL
 
-//#define SIZE 10240
-#define SIZE (18 / 3 * 1024 * 1024 / sizeof(double) * 1024)
+#define SIZE 10240
+//#define SIZE (18 / 3 * 1024 * 1024 / sizeof(double) * 1024)
 
 int main()
 {
@@ -67,7 +69,9 @@ int main()
     DEBUG_PRINT
 #endif
 
-#if defined(OMP_ALLOC)
+#if defined(MAP_ALL)
+#pragma omp target data map(to:size) map(to:d_a[0:size]) map(to:d_b[0:size]) map(from:d_c[0:size])
+#elif defined(OMP_ALLOC)
 #pragma omp target data map(to:size)
 #elif defined(HYB_ALLOC)
 #pragma omp target data map(to:size) map(to:d_a[0:size]) map(to:d_b[0:size])
@@ -75,7 +79,9 @@ int main()
 #pragma omp target data map(to:size) map(to:d_a[0:size]) map(to:d_b[0:size]) map(from:d_c[0:size])
 #endif
     {
-#if defined(OMP_ALLOC)
+#if defined(MAP_ALL)
+#pragma omp target teams distribute parallel for
+#elif defined(OMP_ALLOC)
 #pragma omp target teams distribute parallel for is_device_ptr(d_a) is_device_ptr(d_b) is_device_ptr(d_c)
 #elif defined(HYB_ALLOC)
 #pragma omp target teams distribute parallel for is_device_ptr(d_c)
@@ -87,7 +93,9 @@ int main()
     }
 #ifdef SEC_CALL
     cudaDeviceSynchronize();
-#if defined(OMP_ALLOC)
+#if defined(MAP_ALL)
+#pragma omp target teams distribute parallel for
+#elif defined(OMP_ALLOC)
 #pragma omp target teams distribute parallel for is_device_ptr(d_a) is_device_ptr(d_b) is_device_ptr(d_c)
 #elif defined(HYB_ALLOC)
 #pragma omp target teams distribute parallel for is_device_ptr(d_c)
