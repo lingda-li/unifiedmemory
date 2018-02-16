@@ -34,15 +34,14 @@ namespace {
                   if (auto *GV = dyn_cast<GlobalVariable>(CE->getOperand(0))) {
                     GV->dump();
                     if (auto *C = dyn_cast<ConstantDataArray>(GV->getOperand(0))) {
-                      SmallVector<unsigned, 16> MapTypes;
+                      SmallVector<uint64_t, 16> MapTypes;
                       bool LocalChanged = false;
                       for (unsigned i = 0; i < C->getNumElements(); i++) {
                         auto *ConstantI = dyn_cast<ConstantInt>(C->getElementAsConstant(i));
                         assert(ConstantI && "Suppose to get constant integer");
                         int64_t V = ConstantI->getSExtValue();
-                        if (V & 0x01 || V & 0x02) {
-                          V &= ~0x03;
-                          V |= 0x100;
+                        if ((V & 0x01 || V & 0x02) && !(V & 0x400)) {
+                          V |= 0x400;
                           LocalChanged = true;
                         }
                         MapTypes.push_back(V);
@@ -64,15 +63,14 @@ namespace {
                   if (auto *GV = dyn_cast<GlobalVariable>(CE->getOperand(0))) {
                     GV->dump();
                     if (auto *C = dyn_cast<ConstantDataArray>(GV->getOperand(0))) {
-                      SmallVector<unsigned, 16> MapTypes;
+                      SmallVector<uint64_t, 16> MapTypes;
                       bool LocalChanged = false;
                       for (unsigned i = 0; i < C->getNumElements(); i++) {
                         auto *ConstantI = dyn_cast<ConstantInt>(C->getElementAsConstant(i));
                         assert(ConstantI && "Suppose to get constant integer");
                         int64_t V = ConstantI->getSExtValue();
-                        if (V & 0x01 || V & 0x02) {
-                          V &= ~0x03;
-                          V |= 0x100;
+                        if ((V & 0x01 || V & 0x02) && !(V & 0x400)) {
+                          V |= 0x400;
                           LocalChanged = true;
                         }
                         MapTypes.push_back(V);

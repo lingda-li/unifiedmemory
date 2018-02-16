@@ -11,13 +11,13 @@
 #define DEBUG_PRINT
 #endif
 
-#define OMP_ALLOC
+//#define OMP_ALLOC
 //#define HYB_ALLOC
-//#define UVM_ALLOC
+#define UVM_ALLOC
 //#define HOST_ALLOC
 //#define DEVICE_ALLOC
 
-//#define MAP_ALL
+#define MAP_ALL
 
 //#define NO_HOST_ACCESS
 
@@ -71,7 +71,8 @@ int main()
 #if defined(MAP_ALL)
 #pragma omp target teams distribute parallel for map(to:d_a[0:size]) map(to:d_b[0:size]) map(from:d_c[0:size])
 #elif defined(OMP_ALLOC)
-//#pragma omp target teams distribute parallel for map(to:size) is_device_ptr(d_a) is_device_ptr(d_b) is_device_ptr(d_c)
+#pragma omp target teams distribute parallel for is_device_ptr(d_a) is_device_ptr(d_b) is_device_ptr(d_c)
+#elif defined(UVM_ALLOC)
 #pragma omp target teams distribute parallel for is_device_ptr(d_a) is_device_ptr(d_b) is_device_ptr(d_c)
 #elif defined(HYB_ALLOC)
 #pragma omp target teams distribute parallel for map(to:d_a[0:size]) map(to:d_b[0:size]) is_device_ptr(d_c)
