@@ -23,6 +23,7 @@ bool OMPPass::runOnModule(Module &M) {
     errs() << "Error: pointer propagation anlaysis fails\n";
     return false;
   }
+  calculateAccessFreq(M);
   return optimizeDataMapping(M);
 }
 
@@ -56,7 +57,7 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
                 if (MAI.getBaseAliasEntry(BasePtr) == NULL) {
                   errs() << "new entry ";
                   BasePtr->dump();
-                  DataEntry data_entry(BasePtr, 2, CI->getArgOperand(1));
+                  DataEntry data_entry(BasePtr, 2, CI->getArgOperand(1), &F);
                   data_entry.alloc = CI;
                   FuncInfoEntry *FIE = new FuncInfoEntry(&F);
                   data_entry.func_map.insert(std::make_pair(&F, FIE));
@@ -71,7 +72,7 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
               if (MAI.getBaseAliasEntry(BasePtr) == NULL) {
                 errs() << "new entry ";
                 BasePtr->dump();
-                DataEntry data_entry(BasePtr, 2, CI->getArgOperand(1)); // managed space
+                DataEntry data_entry(BasePtr, 2, CI->getArgOperand(1), &F); // managed space
                 data_entry.alloc = CI;
                 MAI.newEntry(data_entry);
               } else
@@ -176,43 +177,48 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
             }
           } else if (auto *GEPI = dyn_cast<GetElementPtrInst>(&I)) {
             Value *BasePtr = GEPI->getOperand(0);
-            unsigned NumAlias = 0;
+            auto *ConstantI = dyn_cast<ConstantInt>(GEPI->getOperand(1));
+            if (!ConstantI)
+              continue;
+            int64_t V = ConstantI->getSExtValue();
+            if (V != 0) {
+              errs() << "Error: the first offset is not 0\n";
+              return false;
+            }
+            ConstantI = dyn_cast<ConstantInt>(GEPI->getOperand(2));
+            if (!ConstantI)
+              continue;
+            V = ConstantI->getSExtValue();
+
             if (auto *SourceEntry = MAI.getAliasEntry(BasePtr)) {
               if (MAI.tryInsertAliasEntry(SourceEntry, GEPI)) {
                 errs() << "  alias entry ";
                 GEPI->dump();
                 NumNewAdded++;
-                NumAlias++;
               }
-            }
-            if (auto *SourceEntry = MAI.getBaseAliasEntry(BasePtr)) {
-              if (MAI.tryInsertBaseAliasEntry(SourceEntry, GEPI)) {
-                errs() << "  base alias entry ";
-                GEPI->dump();
-                NumNewAdded++;
-                NumAlias++;
-              }
-            }
-            if (auto *SourceEntry = MAI.getAliasEntry(GEPI)) {
+            } else if (auto *SourceEntry = MAI.getAliasEntry(GEPI)) {
               if (MAI.tryInsertAliasEntry(SourceEntry, BasePtr)) {
                 errs() << "  alias entry ";
                 BasePtr->dump();
                 NumNewAdded++;
-                NumAlias++;
               }
-            }
-            if (auto *SourceEntry = MAI.getBaseAliasEntry(GEPI)) {
-              if (MAI.tryInsertBaseAliasEntry(SourceEntry, BasePtr)) {
-                errs() << "  base alias entry ";
+            } else if (auto *SourceEntry = MAI.getBaseAliasEntry(GEPI)) {
+              if (MAI.tryInsertBaseOffsetAliasEntry(SourceEntry, BasePtr, V)) {
+                errs() << "  base alias offset entry (" << V << ") ";
                 BasePtr->dump();
                 NumNewAdded++;
-                NumAlias++;
               }
-            }
-            if (NumAlias > 1) {
-              errs() << "Error: a value is alias for multiple entries\n";
-              I.dump();
-              return false;
+            } else {
+              SmallVector<std::pair<DataEntry*, int64_t>, 4> EVSet = MAI.getBaseOffsetAliasEntries(BasePtr);
+              for (auto EV : EVSet) {
+                auto *SourceEntry = EV.first;
+                int64_t Diff = EV.second - V;
+                if (MAI.tryInsertBaseOffsetAliasEntry(SourceEntry, GEPI, Diff)) {
+                  errs() << "  base alias offset entry (" << Diff << ") ";
+                  GEPI->dump();
+                  NumNewAdded++;
+                }
+              }
             }
           } else if (auto *CI = dyn_cast<CallInst>(&I)) {
             auto *Callee = CI->getCalledFunction();
@@ -300,72 +306,125 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
   return true;
 }
 
+void OMPPass::calculateAccessFreq(Module &M) {
+  errs() << "  ---- Access Frequency Analysis ----\n";
+  SmallVector<Function*, 8> VisitedFuncs;
+  MemInfo<FuncArgEntry> *FAI = &getAnalysis<FuncArgAccessCGInfoPass>().getFAI();
+
+  for (auto &E : *MAI.getEntries()) {
+    Function *F = E.getFunc();
+    SmallVector<Function*, 8>::const_iterator I = VisitedFuncs.begin();
+    for (; I != VisitedFuncs.end(); I++)
+      if (*I == F)
+        break;
+    if (I != VisitedFuncs.end()) // Have traversed this function
+      continue;
+    assert(!F->isDeclaration());
+    VisitedFuncs.push_back(F);
+
+    BlockFrequencyInfo *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>(*F).getBFI();
+    for (auto &BB : *F) {
+      double Freq = (double)BFI->getBlockFreq(&BB).getFrequency() / (double)BFI->getEntryFreq();
+      for (auto &I : BB) {
+        if (auto *LI = dyn_cast<LoadInst>(&I)) {
+          Value *LoadAddr = LI->getOperand(0);
+          DataEntry *E = MAI.getAliasEntry(LoadAddr);
+          if (E && E->getFunc() == F) {
+            errs() << "  load (" << Freq << ") from ";
+            E->dumpBase();
+            E->load_freq += Freq;
+          }
+        } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
+          Value *StoreAddr = SI->getOperand(1);
+          DataEntry *E = MAI.getAliasEntry(StoreAddr);
+          if (E && E->getFunc() == F) {
+            errs() << "  store (" << Freq << ") to ";
+            E->dumpBase();
+            E->store_freq += Freq;
+          }
+        } else if (auto *CI = dyn_cast<CallInst>(&I)) {
+          for (int i = 0; i < I.getNumOperands(); i++) {
+            Value *OPD = CI->getOperand(i);
+            unsigned AliasTy = 0;
+            DataEntry *E = MAI.getAliasEntry(OPD);
+            if (E && E->getFunc() == F) {
+              assert(MAI.getBaseAliasEntry(OPD) == NULL);
+              FuncArgEntry *FAE = FAI->getFuncArgEntry(CI->getCalledFunction(), i);
+              if (FAE && FAE->getValid()) {
+                errs() << "  call (" << Freq << ", " << FAE->getLoadFreq()
+                       << ", " << FAE->getStoreFreq() << ") using ";
+                E->dumpBase();
+                E->load_freq += Freq * FAE->getLoadFreq();
+                E->store_freq += Freq * FAE->getStoreFreq();
+                errs() << CI->getCalledFunction()->getName() << "\n";
+              } else if (!CI->getCalledFunction()->isDeclaration()) // Could reach declaration here
+                errs() << "Warning: wrong traversal order, or recursive call\n";
+            }
+          }
+        }
+      }
+    }
+  }
+
+  for (auto &E : *MAI.getEntries()) {
+    errs() << "Frequency of ";
+    E.dumpBase();
+    errs() << "  load is " << E.load_freq << "\n";
+    errs() << "  store is " << E.store_freq << "\n";
+  }
+}
+
 bool OMPPass::optimizeDataMapping(Module &M) {
   bool Changed = false;
+  errs() << "  ---- Data Mapping Optimization ----\n";
   for (Function &F : M) {
     if (F.isDeclaration())
       continue;
-    errs() << "  func: " << F.getName() << "\n";
     for (auto &BB : F) {
       for (auto &I : BB) {
         if (auto *CI = dyn_cast<CallInst>(&I)) {
           auto *Callee = CI->getCalledFunction();
-          if (Callee && Callee->getName() == "__tgt_target_teams") {
-            errs() << "  target call: ";
-            CI->dump();
-            if (auto *CE = dyn_cast<ConstantExpr>(CI->getArgOperand(6))) {
-              if (auto *GV = dyn_cast<GlobalVariable>(CE->getOperand(0))) {
-                GV->dump();
-                if (auto *C = dyn_cast<ConstantDataArray>(GV->getOperand(0))) {
-                  SmallVector<uint64_t, 16> MapTypes;
-                  bool LocalChanged = false;
-                  for (unsigned i = 0; i < C->getNumElements(); i++) {
-                    auto *ConstantI = dyn_cast<ConstantInt>(C->getElementAsConstant(i));
-                    assert(ConstantI && "Suppose to get constant integer");
-                    int64_t V = ConstantI->getSExtValue();
-                    if ((V & 0x01 || V & 0x02) && !(V & 0x400)) {
-                      V |= 0x400;
-                      LocalChanged = true;
-                    }
-                    MapTypes.push_back(V);
-                  }
-                  if (LocalChanged) {
-                    auto *NCDA = ConstantDataArray::get(C->getContext(), MapTypes);
-                    C->replaceAllUsesWith(NCDA);
-                    errs() << "    map type changed: ";
-                    GV->dump();
-                    Changed = true;
-                  }
-                }
-              }
-            }
-          } else if (Callee && Callee->getName() == "__tgt_target_data_begin") {
+          if (Callee->getName().find("__tgt_target") != 0)
+            continue;
+          ConstantExpr *CE;
+          Value *Args;
+          if (Callee->getName().find("__tgt_target_data") != std::string::npos) {
             errs() << "  target data call: ";
-            CI->dump();
-            if (auto *CE = dyn_cast<ConstantExpr>(CI->getArgOperand(5))) {
-              if (auto *GV = dyn_cast<GlobalVariable>(CE->getOperand(0))) {
-                GV->dump();
-                if (auto *C = dyn_cast<ConstantDataArray>(GV->getOperand(0))) {
-                  SmallVector<uint64_t, 16> MapTypes;
-                  bool LocalChanged = false;
-                  for (unsigned i = 0; i < C->getNumElements(); i++) {
-                    auto *ConstantI = dyn_cast<ConstantInt>(C->getElementAsConstant(i));
-                    assert(ConstantI && "Suppose to get constant integer");
-                    int64_t V = ConstantI->getSExtValue();
-                    if ((V & 0x01 || V & 0x02) && !(V & 0x400)) {
-                      V |= 0x400;
-                      LocalChanged = true;
-                    }
-                    MapTypes.push_back(V);
-                  }
-                  if (LocalChanged) {
-                    auto *NCDA = ConstantDataArray::get(C->getContext(), MapTypes);
-                    C->replaceAllUsesWith(NCDA);
-                    errs() << "    map type changed: ";
-                    GV->dump();
-                    Changed = true;
+            Args = CI->getArgOperand(3);
+            CE = dyn_cast<ConstantExpr>(CI->getArgOperand(5));
+          } else {
+            errs() << "  target call: ";
+            Args = CI->getArgOperand(4);
+            CE = dyn_cast<ConstantExpr>(CI->getArgOperand(6));
+          }
+          assert(Args && CE);
+          CI->dump();
+
+          if (auto *GV = dyn_cast<GlobalVariable>(CE->getOperand(0))) {
+            GV->dump();
+            if (auto *C = dyn_cast<ConstantDataArray>(GV->getOperand(0))) {
+              SmallVector<uint64_t, 16> MapTypes;
+              bool LocalChanged = false;
+              for (unsigned i = 0; i < C->getNumElements(); i++) {
+                auto *ConstantI = dyn_cast<ConstantInt>(C->getElementAsConstant(i));
+                assert(ConstantI && "Suppose to get constant integer");
+                int64_t V = ConstantI->getSExtValue();
+                if (auto Entry = MAI.getBaseOffsetAliasEntries(Args, i)) {
+                  errs() << "  arg " << i << " (" << Entry->getLoadFreq() << ", " << Entry->getStoreFreq() <<  ") is ";
+                  Entry->dumpBase();
+                  if ((V & 0x01 || V & 0x02) && !(V & 0x400)) {
+                    V |= 0x400;
+                    LocalChanged = true;
                   }
                 }
+                MapTypes.push_back(V);
+              }
+              if (LocalChanged) {
+                auto *NCDA = ConstantDataArray::get(C->getContext(), MapTypes);
+                C->replaceAllUsesWith(NCDA);
+                errs() << "    map type changed: ";
+                GV->dump();
+                Changed = true;
               }
             }
           }
@@ -382,9 +441,9 @@ bool OMPPass::optimizeDataMapping(Module &M) {
 static void registerOMPPass(const PassManagerBuilder &,
                          legacy::PassManagerBase &PM) {
   PM.add(new BlockFrequencyInfoWrapperPass());
-  PM.add(new CallGraphWrapperPass());
+  //PM.add(new CallGraphWrapperPass());
   PM.add(new FuncArgAccessCGInfoPass());
-  //PM.add(new OMPPass());
+  PM.add(new OMPPass());
 }
 static RegisterStandardPasses
   //RegisterMyPass(PassManagerBuilder::EP_EnabledOnOptLevel0,

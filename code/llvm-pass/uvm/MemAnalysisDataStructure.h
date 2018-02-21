@@ -48,6 +48,9 @@ class FuncInfoEntry {
 };
 
 class DataEntry {
+  protected:
+    Function *func; // birth function
+
   public:
     Value *base_ptr;
     unsigned type; // 0: host, 1: device, 2: managed
@@ -58,6 +61,7 @@ class DataEntry {
     Value *reallocated_base_ptr;
     SmallVector<Value*, 8> alias_ptrs;
     SmallVector<Value*, 2> base_alias_ptrs;
+    SmallVector<std::pair<Value*, int64_t>, 2> base_offset_alias_ptrs;
     bool keep_me; // keep original allocation & data transfer
   
     Instruction *alloc;
@@ -74,6 +78,7 @@ class DataEntry {
     DataEntry() {
       base_ptr = NULL;
       size = NULL;
+      func = NULL;
 
       pair_entry = NULL;
       reallocated_base_ptr = NULL;
@@ -89,6 +94,23 @@ class DataEntry {
       type = in_type;
       assert(type >= 0 && type <= 2);
       size = in_size;
+  
+      func = NULL;
+      pair_entry = NULL;
+      reallocated_base_ptr = NULL;
+      keep_me = false;
+      alloc = NULL;
+      free = NULL;
+
+      load_freq = store_freq = 0.0;
+    }
+
+    DataEntry(Value *in_base_ptr, unsigned in_type, Value *in_size, Function *birth_func) {
+      base_ptr = in_base_ptr;
+      type = in_type;
+      assert(type >= 0 && type <= 2);
+      size = in_size;
+      func = birth_func;
   
       pair_entry = NULL;
       reallocated_base_ptr = NULL;
@@ -115,6 +137,22 @@ class DataEntry {
       return NULL;
     }
 
+    std::pair<DataEntry*, int64_t> getBaseOffsetAliasPtr(Value *base_alias_ptr) {
+      for (auto CAPTR : base_offset_alias_ptrs) {
+        if(CAPTR.first == base_alias_ptr)
+          return std::make_pair(this, CAPTR.second);
+      }
+      return std::make_pair((DataEntry*)NULL, 0);
+    }
+
+    DataEntry* getBaseOffsetAliasPtr(Value *base_alias_ptr, int64_t offset) {
+      for (auto CAPTR : base_offset_alias_ptrs) {
+        if(CAPTR.first == base_alias_ptr && CAPTR.second == offset)
+          return this;
+      }
+      return NULL;
+    }
+
     bool tryInsertAliasPtr(Value *alias_ptr) {
       for (Value *CAPTR : alias_ptrs) {
         if(CAPTR == alias_ptr)
@@ -123,6 +161,7 @@ class DataEntry {
       alias_ptrs.push_back(alias_ptr);
       return true;
     }
+
     bool tryInsertBaseAliasPtr(Value *alias_ptr) {
       if (base_ptr == alias_ptr)
         return false;
@@ -134,8 +173,19 @@ class DataEntry {
       return true;
     }
 
+    bool tryInsertBaseOffsetAlias(Value *base_alias_ptr, int64_t offset) {
+      for (auto CAPTR : base_offset_alias_ptrs) {
+        if(CAPTR.first == base_alias_ptr && CAPTR.second == offset)
+          return false;
+      }
+      base_offset_alias_ptrs.push_back(std::make_pair(base_alias_ptr, offset));
+      return true;
+    }
+
     double getLoadFreq() { return load_freq; }
     double getStoreFreq() { return store_freq; }
+    Function *getFunc() { return func; }
+    void setFunc(Function * f) { func = f; }
 
     void dumpBase() {
       if (base_ptr)
@@ -157,14 +207,15 @@ class DataEntry {
 
 class FuncArgEntry : public DataEntry {
   private:
-    Function *func;
+    //Function *func;
     Value *arg;
     int arg_num;
     bool valid;
 
   public:
     FuncArgEntry(Function *f, Value *a, int an)
-      : DataEntry(), func(f), arg(a), arg_num(an), valid(false) {}
+      : DataEntry(), arg(a), arg_num(an), valid(false) {
+      setFunc(f); }
 
     bool isMatch(Function *f, int an) {
       if (func == f && arg_num == an)
@@ -197,6 +248,29 @@ class MemInfo {
       return NULL;
     }
   
+    SmallVector<std::pair<EntryTy*, int64_t>, 4> getBaseOffsetAliasEntries(Value *base_alias_ptr) {
+      SmallVector<std::pair<EntryTy*, int64_t>, 4> Matches;
+      for (auto &E : Entries) {
+        auto EV = E.getBaseOffsetAliasPtr(base_alias_ptr);
+        if (EV.first)
+          Matches.push_back(EV);
+      }
+      return Matches;
+    }
+  
+    EntryTy* getBaseOffsetAliasEntries(Value *base_alias_ptr, int64_t offset) {
+      SmallVector<EntryTy*, 4> Matches;
+      for (auto &E : Entries) {
+        if (auto EV = E.getBaseOffsetAliasPtr(base_alias_ptr, offset))
+          Matches.push_back(EV);
+      }
+      assert(Matches.size() <= 1 && "Two different allocations should not have the same base and offset");
+      if (Matches.size() == 0)
+        return NULL;
+      else
+        return Matches.front();
+    }
+  
     bool tryInsertBaseAliasEntry(EntryTy *data_entry, Value *base_alias_ptr) {
       if (data_entry->base_ptr == base_alias_ptr)
         return false;
@@ -206,6 +280,10 @@ class MemInfo {
       }
       data_entry->base_alias_ptrs.push_back(base_alias_ptr);
       return true;
+    }
+  
+    bool tryInsertBaseOffsetAliasEntry(EntryTy *data_entry, Value *base_alias_ptr, int64_t offset) {
+      return data_entry->tryInsertBaseOffsetAlias(base_alias_ptr, offset);
     }
   
     EntryTy* getAliasEntry(Value *alias_ptr) {

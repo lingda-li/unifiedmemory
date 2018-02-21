@@ -17,6 +17,7 @@ struct OMPPass : public ModulePass {
 
   bool analyzeGPUAlloc(Module &M);
   bool analyzePointerPropagation(Module &M);
+  void calculateAccessFreq(Module &M);
   bool optimizeDataMapping(Module &M);
 
   void getAnalysisUsage(AnalysisUsage &AU) const override;
