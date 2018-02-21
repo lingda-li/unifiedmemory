@@ -17,6 +17,7 @@ static void registerMemAccessInfoPass(const PassManagerBuilder &,
 }
 static RegisterStandardPasses
   //RegisterMyPass(PassManagerBuilder::EP_EarlyAsPossible,
-  RegisterMyPass(PassManagerBuilder::EP_EnabledOnOptLevel0,
-  //RegisterMyPass(PassManagerBuilder::EP_ModuleOptimizerEarly,
+  //RegisterMyPass(PassManagerBuilder::EP_EnabledOnOptLevel0,
+  RegisterMyPass(PassManagerBuilder::EP_ModuleOptimizerEarly,
+  //RegisterMyPass(PassManagerBuilder::EP_OptimizerLast,
                  registerMemAccessInfoPass);

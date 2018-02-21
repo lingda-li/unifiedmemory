@@ -45,7 +45,7 @@ endif(APPLE)
 add_library(UVMTransformPass MODULE
     # List your source files here.
     UVMTransformPass.cpp
-    MemAccessInfoPass.cpp
+    MemAccessInfo.cpp
     CGMemAnalysis.cpp
 )
 
@@ -69,7 +69,7 @@ endif(APPLE)
 add_library(MemAnalysisPass MODULE
     # List your source files here.
     MemAnalysisPass.cpp
-    MemAccessInfoPass.cpp
+    MemAccessInfo.cpp
     CGMemAnalysis.cpp
 )
 
@@ -93,6 +93,7 @@ endif(APPLE)
 add_library(OMPPass MODULE
     # List your source files here.
     OMPPass.cpp
+    CGMemAnalysis.cpp
 )
 
 # Use C++11 to compile our pass (i.e., supply -std=c++11).

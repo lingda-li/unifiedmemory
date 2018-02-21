@@ -124,6 +124,8 @@ class DataEntry {
       return true;
     }
     bool tryInsertBaseAliasPtr(Value *alias_ptr) {
+      if (base_ptr == alias_ptr)
+        return false;
       for (Value *CAPTR : base_alias_ptrs) {
         if(CAPTR == alias_ptr)
           return false;
@@ -141,6 +143,14 @@ class DataEntry {
       else {
         assert(!alias_ptrs.empty());
         alias_ptrs[0]->dump();
+      }
+    }
+
+    void dump() {
+      errs() << "DataEntry: ";
+      base_ptr->dump();
+      for (Value *CAPTR : base_alias_ptrs) {
+        CAPTR->dump();
       }
     }
 };
@@ -188,6 +198,8 @@ class MemInfo {
     }
   
     bool tryInsertBaseAliasEntry(EntryTy *data_entry, Value *base_alias_ptr) {
+      if (data_entry->base_ptr == base_alias_ptr)
+        return false;
       for (Value *CAPTR : data_entry->base_alias_ptrs) {
         if(CAPTR == base_alias_ptr)
           return false;

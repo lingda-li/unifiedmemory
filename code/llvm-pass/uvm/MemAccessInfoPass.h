@@ -12,7 +12,6 @@
 #include "llvm/Analysis/BlockFrequencyInfo.h"
 #include "MemAnalysisDataStructure.h"
 #include "CGMemAnalysis.h"
-#include "MemAccessInfoPass.h"
 using namespace llvm;
 
 struct MemAccessInfoPass : public ModulePass {
