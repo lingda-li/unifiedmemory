@@ -74,6 +74,7 @@ class DataEntry {
 
     // Load & store frequency
     double load_freq, store_freq;
+    double tgt_load_freq, tgt_store_freq;
   
     DataEntry() {
       base_ptr = NULL;
@@ -87,6 +88,7 @@ class DataEntry {
       free = NULL;
 
       load_freq = store_freq = 0.0;
+      tgt_load_freq = tgt_store_freq = 0.0;
     }
 
     DataEntry(Value *in_base_ptr, unsigned in_type, Value *in_size) {
@@ -103,6 +105,7 @@ class DataEntry {
       free = NULL;
 
       load_freq = store_freq = 0.0;
+      tgt_load_freq = tgt_store_freq = 0.0;
     }
 
     DataEntry(Value *in_base_ptr, unsigned in_type, Value *in_size, Function *birth_func) {
@@ -119,6 +122,7 @@ class DataEntry {
       free = NULL;
 
       load_freq = store_freq = 0.0;
+      tgt_load_freq = tgt_store_freq = 0.0;
     }
 
     void insertFuncInfoEntry(FuncInfoEntry *in_fie) {
@@ -184,12 +188,17 @@ class DataEntry {
 
     double getLoadFreq() { return load_freq; }
     double getStoreFreq() { return store_freq; }
+    void addLoadFreq(double num) { load_freq += num; }
+    void addStoreFreq(double num) { store_freq += num; }
+    double getTgtLoadFreq() { return tgt_load_freq; }
+    double getTgtStoreFreq() { return tgt_store_freq; }
+    void addTgtLoadFreq(double num) { tgt_load_freq += num; }
+    void addTgtStoreFreq(double num) { tgt_store_freq += num; }
     Function *getFunc() { return func; }
     void setFunc(Function * f) { func = f; }
 
     void dumpBase() {
-      if (base_ptr)
-        base_ptr->dump();
+      if (base_ptr) base_ptr->dump();
       else {
         assert(!alias_ptrs.empty());
         alias_ptrs[0]->dump();
@@ -198,8 +207,17 @@ class DataEntry {
 
     void dump() {
       errs() << "DataEntry: ";
-      base_ptr->dump();
+      if (base_ptr) base_ptr->dump();
+      else {
+        assert(!alias_ptrs.empty());
+        alias_ptrs[0]->dump();
+      }
+      errs() << "BaseAlias: ";
       for (Value *CAPTR : base_alias_ptrs) {
+        CAPTR->dump();
+      }
+      errs() << "Alias: ";
+      for (Value *CAPTR : alias_ptrs) {
         CAPTR->dump();
       }
     }
@@ -207,14 +225,17 @@ class DataEntry {
 
 class FuncArgEntry : public DataEntry {
   private:
-    //Function *func;
     Value *arg;
     int arg_num;
     bool valid;
+    std::string func_name;
 
   public:
     FuncArgEntry(Function *f, Value *a, int an)
       : DataEntry(), arg(a), arg_num(an), valid(false) {
+      setFunc(f); }
+    FuncArgEntry(Function *f, Value *a, int an, std::string nm)
+      : DataEntry(), arg(a), arg_num(an), valid(false), func_name(nm) {
       setFunc(f); }
 
     bool isMatch(Function *f, int an) {
@@ -224,8 +245,32 @@ class FuncArgEntry : public DataEntry {
         return true;
       return false;
     }
+    bool isMatch(std::string name, int an) {
+      if (name.find(func_name) == 0)
+        if (arg_num == an || an == -1)
+          return true;
+      return false;
+    }
     bool getValid() { return valid; }
     void setValid() { valid = true; }
+    int getArgNum() { return arg_num; }
+    std::string getName() { return func_name; }
+
+    std::pair<FuncArgEntry*, int64_t> getBaseOffsetAliasPtr(Value *base_alias_ptr) {
+      for (auto CAPTR : base_offset_alias_ptrs) {
+        if(CAPTR.first == base_alias_ptr)
+          return std::make_pair(this, CAPTR.second);
+      }
+      return std::make_pair((FuncArgEntry*)NULL, 0);
+    }
+
+    FuncArgEntry* getBaseOffsetAliasPtr(Value *base_alias_ptr, int64_t offset) {
+      for (auto CAPTR : base_offset_alias_ptrs) {
+        if(CAPTR.first == base_alias_ptr && CAPTR.second == offset)
+          return this;
+      }
+      return NULL;
+    }
 };
 
 template <class EntryTy>
@@ -272,14 +317,7 @@ class MemInfo {
     }
   
     bool tryInsertBaseAliasEntry(EntryTy *data_entry, Value *base_alias_ptr) {
-      if (data_entry->base_ptr == base_alias_ptr)
-        return false;
-      for (Value *CAPTR : data_entry->base_alias_ptrs) {
-        if(CAPTR == base_alias_ptr)
-          return false;
-      }
-      data_entry->base_alias_ptrs.push_back(base_alias_ptr);
-      return true;
+      return data_entry->tryInsertBaseAliasPtr(base_alias_ptr);
     }
   
     bool tryInsertBaseOffsetAliasEntry(EntryTy *data_entry, Value *base_alias_ptr, int64_t offset) {
@@ -322,6 +360,22 @@ class MemInfo {
           return NULL;
       }
       return NULL;
+    }
+
+    FuncArgEntry* getFuncArgEntry(std::string name, int an) {
+      for (auto &E : Entries) {
+        if (auto *FAE = dyn_cast<FuncArgEntry>(&E)) {
+          if (FAE->isMatch(name, an))
+            return FAE;
+        } else
+          return NULL;
+      }
+      return NULL;
+    }
+
+    void dump() {
+      for (auto &E : Entries)
+        E.dump();
     }
 };
 

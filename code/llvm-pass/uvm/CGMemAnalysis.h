@@ -20,32 +20,9 @@ struct FuncArgAccessCGInfoPass : public ModulePass {
   static char ID;
   FuncArgAccessCGInfoPass() : ModulePass(ID) {}
   MemInfo<FuncArgEntry> FAI; // store analysis result
+  MemInfo<FuncArgEntry> TFAI; // store target analysis result
 
-  bool runOnModule(Module &M) override {
-    if (skipModule(M))
-      return false;
-
-    errs() << "  ---- Function Argument Access Frequency CG Analysis ----\n";
-    //CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-    //for (scc_iterator<CallGraph *> I = scc_begin(&CG); !I.isAtEnd(); ++I) {
-    //  if (I->size() != 1)
-    //    continue;
-
-    //  Function *F = I->front()->getFunction();
-    //  if (F && !F->isDeclaration()/* && F->doesNotRecurse()*/) {
-    //    errs() << "On function " << F->getName() << "\n";
-    //    computeLocalAccessFreq(*F);
-    //  }
-    //}
-    for (Function &F : M) {
-      if (F.isDeclaration())
-        continue;
-      errs() << "On function " << F.getName() << "\n";
-      computeLocalAccessFreq(F);
-    }
-
-    return false;
-  }
+  bool runOnModule(Module &M) override;
 
   bool computeLocalAccessFreq(Function &F);
 
