@@ -48,6 +48,9 @@ class FuncInfoEntry {
 };
 
 class DataEntry {
+  private:
+    unsigned rank;
+
   protected:
     Function *func; // birth function
 
@@ -196,6 +199,8 @@ class DataEntry {
     void addTgtStoreFreq(double num) { tgt_store_freq += num; }
     Function *getFunc() { return func; }
     void setFunc(Function * f) { func = f; }
+    unsigned getRank() { return rank; }
+    void setRank(unsigned r) { rank = r; }
 
     void dumpBase() {
       if (base_ptr) base_ptr->dump();

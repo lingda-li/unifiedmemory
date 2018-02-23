@@ -10,6 +10,7 @@
 #include "llvm/ADT/SmallSet.h"
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 #include "OMPPass.h"
 using namespace llvm;
 
@@ -426,18 +427,17 @@ void OMPPass::calculateAccessFreq(Module &M) {
   }
 }
 
-template <class EntryTy>
-bool OMPPass::compareAccessFreq(EntryTy A, EntryTy B) {
-  return true;
-}
-
 bool OMPPass::optimizeDataAllocation(Module &M) {
   bool Changed = false;
   errs() << "  ---- Data Allocation Optimization ----\n";
 
   // Rank by frequency
+  std::sort(MAI.getEntries()->begin(), MAI.getEntries()->end(), compareAccessFreq);
+  size_t Rank = MAI.getEntries()->size();
   for (auto &E : *MAI.getEntries()) {
-    errs() << "Frequency of ";
+    E.setRank(Rank);
+    Rank--;
+    errs() << "Rank " << E.getRank() << " for ";
     E.dumpBase();
     errs() << "  load: " << E.getLoadFreq() << "\t\t";
     errs() << "  store: " << E.getStoreFreq() << " (host)\n";
@@ -488,8 +488,12 @@ bool OMPPass::optimizeDataMapping(Module &M) {
                   Entry->dumpBase();
                   errs() << "    size is ";
                   Entry->size->dump();
-                  if ((V & 0x01 || V & 0x02) && !(V & 0x400)) {
-                    V |= 0x400;
+                  //if ((V & 0x01 || V & 0x02) && !(V & 0x400)) {
+                  //  V |= 0x400;
+                  //  LocalChanged = true;
+                  //}
+                  if (!(V & 0xff000)) {
+                    V |= Entry->getRank() << 12;
                     LocalChanged = true;
                   }
                 }
@@ -510,6 +514,15 @@ bool OMPPass::optimizeDataMapping(Module &M) {
   }
 
   return Changed;
+}
+
+bool compareAccessFreq(DataEntry A, DataEntry B) {
+  double AFreq = A.getTgtLoadFreq() + A.getTgtStoreFreq();
+  double BFreq = B.getTgtLoadFreq() + B.getTgtStoreFreq();
+  if (AFreq < BFreq)
+    return true;
+  else
+    return false;
 }
 
 // Automatically enable the pass.

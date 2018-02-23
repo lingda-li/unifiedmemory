@@ -21,10 +21,9 @@ struct OMPPass : public ModulePass {
   bool optimizeDataAllocation(Module &M);
   bool optimizeDataMapping(Module &M);
 
-  template <class EntryTy>
-  bool compareAccessFreq(EntryTy A, EntryTy B);
-
   void getAnalysisUsage(AnalysisUsage &AU) const override;
 };
+
+bool compareAccessFreq(DataEntry A, DataEntry B);
 
 #endif // LLVM_OMP_PASS_H
