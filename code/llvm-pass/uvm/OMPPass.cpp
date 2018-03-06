@@ -371,7 +371,7 @@ void OMPPass::calculateAccessFreq(Module &M) {
         } else if (auto *CI = dyn_cast<CallInst>(&I)) {
           auto *Callee = CI->getCalledFunction();
           // OpenMP target calls
-          if (Callee->getName().find("__tgt_target") == 0 &&
+          if (Callee && Callee->getName().find("__tgt_target") == 0 &&
               Callee->getName().find("__tgt_target_data") == std::string::npos) {
             auto *MapTypeCE = dyn_cast<ConstantExpr>(CI->getArgOperand(6));
             assert(MapTypeCE);
@@ -393,7 +393,7 @@ void OMPPass::calculateAccessFreq(Module &M) {
                 E->addTgtStoreFreq(Freq * TFAE->getTgtStoreFreq());
               }
             }
-          } else { // Other calls
+          } else if (Callee) { // Other calls
             for (int i = 0; i < I.getNumOperands(); i++) {
               Value *OPD = CI->getOperand(i);
               unsigned AliasTy = 0;
@@ -457,6 +457,8 @@ bool OMPPass::optimizeDataMapping(Module &M) {
       for (auto &I : BB) {
         if (auto *CI = dyn_cast<CallInst>(&I)) {
           auto *Callee = CI->getCalledFunction();
+          if (Callee == NULL)
+            continue;
           if (Callee->getName().find("__tgt_target") != 0)
             continue;
           ConstantExpr *CE;
@@ -493,7 +495,7 @@ bool OMPPass::optimizeDataMapping(Module &M) {
                   //  LocalChanged = true;
                   //}
                   if (!(V & 0xff000)) {
-                    V |= Entry->getRank() << 12;
+                    V |= (Entry->getRank() << 12) & 0xff000;
                     LocalChanged = true;
                   }
                 }

@@ -244,7 +244,7 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
       } else if (auto *CI = dyn_cast<CallInst>(&I)) {
         auto *Callee = CI->getCalledFunction();
         // OpenMP target calls
-        if (Callee->getName().find("__tgt_target") == 0 &&
+        if (Callee && Callee->getName().find("__tgt_target") == 0 &&
             Callee->getName().find("__tgt_target_data") == std::string::npos) {
           auto *MapTypeCE = dyn_cast<ConstantExpr>(CI->getArgOperand(6));
           assert(MapTypeCE);
@@ -266,7 +266,7 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
               E->addTgtStoreFreq(Freq * TFAE->getTgtStoreFreq());
             }
           }
-        } else { // Other calls
+        } else if (Callee) { // Other calls
           for (int i = 0; i < I.getNumOperands(); i++) {
             Value *OPD = CI->getOperand(i);
             unsigned AliasTy = 0;
