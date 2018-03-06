@@ -171,41 +171,48 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
           }
         } else if (auto *GEPI = dyn_cast<GetElementPtrInst>(&I)) {
           Value *BasePtr = GEPI->getOperand(0);
-          if (auto *SourceEntry = FAI.getAliasEntry(BasePtr)) {
+          FuncArgEntry *SourceEntry;
+          if (SourceEntry = FAI.getAliasEntry(BasePtr)) {
             if (FAI.tryInsertAliasEntry(SourceEntry, GEPI)) {
               errs() << "  alias entry ";
               GEPI->dump();
               NumNewAdded++;
             }
-          } else if (auto *SourceEntry = FAI.getAliasEntry(GEPI)) {
+          } else if (SourceEntry = FAI.getAliasEntry(GEPI)) {
             if (FAI.tryInsertAliasEntry(SourceEntry, BasePtr)) {
               errs() << "  alias entry ";
               BasePtr->dump();
               NumNewAdded++;
             }
           } else {
-            auto *ConstantI = dyn_cast<ConstantInt>(GEPI->getOperand(1));
-            if (!ConstantI)
+            SourceEntry = FAI.getBaseAliasEntry(GEPI);
+            auto EVSet = FAI.getBaseOffsetAliasEntries(BasePtr);
+            if (SourceEntry == NULL && EVSet.size() == 0)
               continue;
+
+            auto *ConstantI = dyn_cast<ConstantInt>(GEPI->getOperand(1));
+            if (!ConstantI) {
+              errs() << "Warning: the first offset is not constant\n";
+              continue;
+            }
             int64_t V = ConstantI->getSExtValue();
             if (V != 0) {
-              errs() << "Info: the first offset is not 0\n";
+              errs() << "Warning: the first offset is not 0\n";
               continue;
             }
             ConstantI = dyn_cast<ConstantInt>(GEPI->getOperand(2));
             if (!ConstantI)
               continue;
             V = ConstantI->getSExtValue();
-            if (auto *SourceEntry = FAI.getBaseAliasEntry(GEPI)) {
+            if (SourceEntry) {
               if (FAI.tryInsertBaseOffsetAliasEntry(SourceEntry, BasePtr, V)) {
                 errs() << "  base alias offset entry (" << V << ") ";
                 BasePtr->dump();
                 NumNewAdded++;
               }
             } else {
-              auto EVSet = FAI.getBaseOffsetAliasEntries(BasePtr);
               for (auto EV : EVSet) {
-                auto *SourceEntry = EV.first;
+                SourceEntry = EV.first;
                 int64_t Diff = EV.second - V;
                 if (FAI.tryInsertBaseOffsetAliasEntry(SourceEntry, GEPI, Diff)) {
                   errs() << "  base alias offset entry (" << Diff << ") ";
