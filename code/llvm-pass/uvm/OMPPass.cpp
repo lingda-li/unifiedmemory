@@ -44,8 +44,9 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
       continue;
     for (auto &BB : F) {
       for (auto &I : BB) {
-        if (auto *CI = dyn_cast<CallInst>(&I)) {
-          auto *Callee = CI->getCalledFunction();
+        if (isa<CallInst>(I) || isa<InvokeInst>(I)) {
+          CallSite CS(&I);
+          auto *Callee = CS.getCalledFunction();
           if (Callee && Callee->getName() == "cudaMalloc") {
             errs() << "Error: this is for UVM only\n";
             return false;
@@ -53,7 +54,8 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
             errs() << "Info: ignore malloc\n";
             continue;
           } else if (Callee && Callee->getName() == "cudaMallocManaged") {
-            auto *AllocPtr = CI->getArgOperand(0);
+            auto *AllocPtr = CS.getArgOperand(0);
+            auto *Size = CS.getArgOperand(1);
             if (auto *BCI = dyn_cast<BitCastInst>(AllocPtr)) {
               Value *BasePtr = BCI->getOperand(0);
               if (auto *AI = dyn_cast<AllocaInst>(BasePtr)) {
@@ -61,8 +63,8 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
                 if (MAI.getBaseAliasEntry(BasePtr) == NULL) {
                   errs() << "new entry ";
                   BasePtr->dump();
-                  DataEntry data_entry(BasePtr, 2, CI->getArgOperand(1), &F);
-                  data_entry.alloc = CI;
+                  DataEntry data_entry(BasePtr, 2, Size, &F);
+                  data_entry.alloc = &I;
                   FuncInfoEntry *FIE = new FuncInfoEntry(&F);
                   data_entry.func_map.insert(std::make_pair(&F, FIE));
                   data_entry.insertFuncInfoEntry(FIE);
@@ -76,8 +78,8 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
               if (MAI.getBaseAliasEntry(BasePtr) == NULL) {
                 errs() << "new entry ";
                 BasePtr->dump();
-                DataEntry data_entry(BasePtr, 2, CI->getArgOperand(1), &F); // managed space
-                data_entry.alloc = CI;
+                DataEntry data_entry(BasePtr, 2, Size, &F); // managed space
+                data_entry.alloc = &I;
                 MAI.newEntry(data_entry);
               } else
                 errs() << "Error: redundant allocation?\n";
@@ -232,17 +234,20 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
                 }
               }
             }
-          } else if (auto *CI = dyn_cast<CallInst>(&I)) {
-            auto *Callee = CI->getCalledFunction();
-            if (Callee && Callee->isIntrinsic())
+          } else if (isa<CallInst>(I) || isa<InvokeInst>(I)) {
+            CallSite CS(&I);
+            auto *Callee = CS.getCalledFunction();
+            if (Callee == NULL)
               continue;
-            else if (Callee && Callee->getName() == "cudaMallocManaged")
+            else if (Callee->isIntrinsic())
               continue;
-            else if (Callee && Callee->getName() == "cudaFree")
+            else if (Callee->getName() == "cudaMallocManaged")
+              continue;
+            else if (Callee->getName() == "cudaFree")
               continue;
             bool Use = false;
             for (int i = 0; i < I.getNumOperands(); i++) {
-              Value *OPD = CI->getOperand(i);
+              Value *OPD = I.getOperand(i);
               unsigned AliasTy = 0;
               DataEntry *SourceEntry;
               if (auto *E = MAI.getAliasEntry(OPD)) {
@@ -272,7 +277,7 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
                 if (AliasTy == 1) {
                   if (MAI.tryInsertAliasEntry(SourceEntry, &(*A))) {
                     assert(SourceEntry->func_map.find(Callee) == SourceEntry->func_map.end());
-                    FuncInfoEntry *FIE = new FuncInfoEntry(Callee, CI, &(*A), OPD, 1);
+                    FuncInfoEntry *FIE = new FuncInfoEntry(Callee, &I, &(*A), OPD, 1);
                     SourceEntry->insertFuncInfoEntry(FIE);
                     assert(SourceEntry->func_map.find(&F) != SourceEntry->func_map.end());
                     FIE->setParent(SourceEntry->func_map.find(&F)->second);
@@ -283,7 +288,7 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
                 } else {
                   if (MAI.tryInsertBaseAliasEntry(SourceEntry, &(*A))) {
                     assert(SourceEntry->func_map.find(Callee) == SourceEntry->func_map.end());
-                    FuncInfoEntry *FIE = new FuncInfoEntry(Callee, CI, &(*A), OPD, 2);
+                    FuncInfoEntry *FIE = new FuncInfoEntry(Callee, &I, &(*A), OPD, 2);
                     SourceEntry->insertFuncInfoEntry(FIE);
                     assert(SourceEntry->func_map.find(&F) != SourceEntry->func_map.end());
                     FIE->setParent(SourceEntry->func_map.find(&F)->second);
@@ -375,20 +380,21 @@ void OMPPass::calculateAccessFreq(Module &M) {
             E->dumpBase();
             E->store_freq += Freq;
           }
-        } else if (auto *CI = dyn_cast<CallInst>(&I)) {
-          auto *Callee = CI->getCalledFunction();
+        } else if (isa<CallInst>(I) || isa<InvokeInst>(I)) {
+          CallSite CS(&I);
+          auto *Callee = CS.getCalledFunction();
           // OpenMP target calls
           if (Callee && Callee->getName().find("__tgt_target") == 0 &&
               Callee->getName().find("__tgt_target_data") == std::string::npos) {
-            auto *MapTypeCE = dyn_cast<ConstantExpr>(CI->getArgOperand(6));
+            auto *MapTypeCE = dyn_cast<ConstantExpr>(CS.getArgOperand(6));
             assert(MapTypeCE);
             auto *GV = dyn_cast<GlobalVariable>(MapTypeCE->getOperand(0));
             assert(GV);
             auto *C = dyn_cast<ConstantDataArray>(GV->getOperand(0));
             assert(C);
             unsigned NumArgs = C->getNumElements();
-            std::string FuncName = CI->getOperand(1)->getName();
-            auto *Args = CI->getArgOperand(4);
+            std::string FuncName = CS.getArgOperand(1)->getName();
+            auto *Args = CS.getArgOperand(4);
             for (unsigned i = 0; i < NumArgs; i++) {
               auto *E = MAI.getBaseOffsetAliasEntries(Args, i);
               FuncArgEntry *TFAE = TFAI.getFuncArgEntry(FuncName, i);
@@ -402,19 +408,22 @@ void OMPPass::calculateAccessFreq(Module &M) {
             }
           } else if (Callee) { // Other calls
             for (int i = 0; i < I.getNumOperands(); i++) {
-              Value *OPD = CI->getOperand(i);
+              Value *OPD = I.getOperand(i);
               unsigned AliasTy = 0;
               DataEntry *E = MAI.getAliasEntry(OPD);
               if (E && E->getFunc() == F) {
                 assert(MAI.getBaseAliasEntry(OPD) == NULL);
-                FuncArgEntry *FAE = FAI->getFuncArgEntry(CI->getCalledFunction(), i);
+                FuncArgEntry *FAE = FAI->getFuncArgEntry(Callee, i);
                 if (FAE && FAE->getValid()) {
                   errs() << "  call (" << Freq << ", " << FAE->getLoadFreq()
-                         << ", " << FAE->getStoreFreq() << ") using ";
+                         << ", " << FAE->getStoreFreq() << ", " << FAE->getTgtLoadFreq() 
+                         << ", " << FAE->getTgtStoreFreq() << ") using ";
                   E->dumpBase();
                   E->load_freq += Freq * FAE->getLoadFreq();
                   E->store_freq += Freq * FAE->getStoreFreq();
-                } else if (!CI->getCalledFunction()->isDeclaration()) // Could reach declaration here
+                  E->addTgtLoadFreq(Freq * FAE->getTgtLoadFreq());
+                  E->addTgtStoreFreq(Freq * FAE->getTgtStoreFreq());
+                } else if (!Callee->isDeclaration()) // Could reach declaration here
                   errs() << "Warning: wrong traversal order, or recursive call\n";
               }
             }
@@ -462,8 +471,9 @@ bool OMPPass::optimizeDataMapping(Module &M) {
       continue;
     for (auto &BB : F) {
       for (auto &I : BB) {
-        if (auto *CI = dyn_cast<CallInst>(&I)) {
-          auto *Callee = CI->getCalledFunction();
+        if (isa<CallInst>(I) || isa<InvokeInst>(I)) {
+          CallSite CS(&I);
+          auto *Callee = CS.getCalledFunction();
           if (Callee == NULL)
             continue;
           if (Callee->getName().find("__tgt_target") != 0)
@@ -472,15 +482,15 @@ bool OMPPass::optimizeDataMapping(Module &M) {
           Value *Args;
           if (Callee->getName().find("__tgt_target_data") != std::string::npos) {
             errs() << "  target data call: ";
-            Args = CI->getArgOperand(3);
-            CE = dyn_cast<ConstantExpr>(CI->getArgOperand(5));
+            Args = CS.getArgOperand(3);
+            CE = dyn_cast<ConstantExpr>(CS.getArgOperand(5));
           } else {
             errs() << "  target call: ";
-            Args = CI->getArgOperand(4);
-            CE = dyn_cast<ConstantExpr>(CI->getArgOperand(6));
+            Args = CS.getArgOperand(4);
+            CE = dyn_cast<ConstantExpr>(CS.getArgOperand(6));
           }
           assert(Args && CE);
-          CI->dump();
+          I.dump();
 
           if (auto *GV = dyn_cast<GlobalVariable>(CE->getOperand(0))) {
             GV->dump();

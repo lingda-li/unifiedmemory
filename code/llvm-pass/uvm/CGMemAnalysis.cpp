@@ -24,8 +24,8 @@ bool FuncArgAccessCGInfoPass::runOnModule(Module &M) {
         std::stringstream ss(Line);
         ss >> Name >> ArgNum >> LoadFreq >> StoreFreq;
         FuncArgEntry E(NULL, NULL, ArgNum, Name);
-        E.addLoadFreq(LoadFreq);
-        E.addStoreFreq(StoreFreq);
+        E.addTgtLoadFreq(LoadFreq);
+        E.addTgtStoreFreq(StoreFreq);
         TFAI.newEntry(E);
       }
     }
@@ -248,20 +248,21 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
           E->dumpBase();
           E->store_freq += Freq;
         }
-      } else if (auto *CI = dyn_cast<CallInst>(&I)) {
-        auto *Callee = CI->getCalledFunction();
+      } else if (isa<CallInst>(I) || isa<InvokeInst>(I)) {
+        CallSite CS(&I);
+        auto *Callee = CS.getCalledFunction();
         // OpenMP target calls
         if (Callee && Callee->getName().find("__tgt_target") == 0 &&
             Callee->getName().find("__tgt_target_data") == std::string::npos) {
-          auto *MapTypeCE = dyn_cast<ConstantExpr>(CI->getArgOperand(6));
+          auto *MapTypeCE = dyn_cast<ConstantExpr>(CS.getArgOperand(6));
           assert(MapTypeCE);
           auto *GV = dyn_cast<GlobalVariable>(MapTypeCE->getOperand(0));
           assert(GV);
           auto *C = dyn_cast<ConstantDataArray>(GV->getOperand(0));
           assert(C);
           unsigned NumArgs = C->getNumElements();
-          std::string FuncName = CI->getOperand(1)->getName();
-          auto *Args = CI->getArgOperand(4);
+          std::string FuncName = CS.getArgOperand(1)->getName();
+          auto *Args = CS.getArgOperand(4);
           for (unsigned i = 0; i < NumArgs; i++) {
             auto *E = FAI.getBaseOffsetAliasEntries(Args, i);
             FuncArgEntry *TFAE = TFAI.getFuncArgEntry(FuncName, i);
@@ -275,19 +276,22 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
           }
         } else if (Callee) { // Other calls
           for (int i = 0; i < I.getNumOperands(); i++) {
-            Value *OPD = CI->getOperand(i);
+            Value *OPD = I.getOperand(i);
             unsigned AliasTy = 0;
             FuncArgEntry*E = FAI.getAliasEntry(OPD);
             if (E) {
               assert(FAI.getBaseAliasEntry(OPD) == NULL);
-              FuncArgEntry *FAE = FAI.getFuncArgEntry(CI->getCalledFunction(), i);
+              FuncArgEntry *FAE = FAI.getFuncArgEntry(Callee, i);
               if (FAE && FAE->getValid()) { // Could reach declaration here
                 errs() << "    call (" << Freq << ", " << FAE->getLoadFreq()
-                       << ", " << FAE->getStoreFreq() << ") using ";
+                       << ", " << FAE->getStoreFreq() << ", " << FAE->getTgtLoadFreq() 
+                       << ", " << FAE->getTgtStoreFreq() << ") using ";
                 E->dumpBase();
                 E->load_freq += Freq * FAE->getLoadFreq();
                 E->store_freq += Freq * FAE->getStoreFreq();
-              } else if (!CI->getCalledFunction()->isDeclaration())
+                E->addTgtLoadFreq(Freq * FAE->getTgtLoadFreq());
+                E->addTgtStoreFreq(Freq * FAE->getTgtStoreFreq());
+              } else if (!Callee->isDeclaration())
                 errs() << "Warning: wrong traversal order, or recursive call\n";
             }
           }
@@ -300,8 +304,10 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
     if (E.isMatch(&F, -1)) {
       errs() << "  Frequency of ";
       E.dumpBase();
-      errs() << "    load is " << E.load_freq << "\n";
-      errs() << "    store is " << E.store_freq << "\n";
+      errs() << "  load: " << E.getLoadFreq() << "\t\t";
+      errs() << "  store: " << E.getStoreFreq() << " (host)\n";
+      errs() << "  load: " << E.getTgtLoadFreq() << "\t\t";
+      errs() << "  store: " << E.getTgtStoreFreq() << " (target)\n";
       E.setValid();
     }
   }

@@ -18,7 +18,7 @@ class FuncInfoEntry {
 
   public:
     Function *func;
-    CallInst *call_point;
+    Instruction *call_point;
     Value *arg;
     Value *arg_value;
     Value *local_copy = NULL;
@@ -26,7 +26,7 @@ class FuncInfoEntry {
     FuncInfoEntry *parent;
 
     FuncInfoEntry(Function *in_func) : func(in_func), parent(NULL) {}
-    FuncInfoEntry(Function *in_func, CallInst *in_call_inst, Value *in_arg, Value *in_arg_value, unsigned in_type) : func(in_func), call_point(in_call_inst), arg(in_arg), arg_value(in_arg_value), type(in_type) {
+    FuncInfoEntry(Function *in_func, Instruction *in_call_inst, Value *in_arg, Value *in_arg_value, unsigned in_type) : func(in_func), call_point(in_call_inst), arg(in_arg), arg_value(in_arg_value), type(in_type) {
       assert(type >= 1 && type <= 2);
     }
 
