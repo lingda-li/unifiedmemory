@@ -10,6 +10,7 @@ using namespace llvm;
 struct OMPPass : public ModulePass {
   static char ID;
   MemInfo<DataEntry> MAI; // store analysis result
+  MemInfo<FuncArgEntry> TFAI; // Store target functions
   OMPPass() : ModulePass(ID) {
   }
 

@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include "llvm/Support/Format.h"
 #include "OMPPass.h"
 using namespace llvm;
 
@@ -85,6 +86,20 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
                 errs() << "Error: redundant allocation?\n";
             } else
               DEBUG_PRINT
+          } else if (Callee && Callee->getName() == "omp_target_alloc") {
+            auto *Size = CS.getArgOperand(0);
+            auto *Device = CS.getArgOperand(1);
+            if (auto *ConstantI = dyn_cast<ConstantInt>(Device)) {
+              int64_t V = ConstantI->getSExtValue();
+              if (V == -100 && MAI.getAliasEntry(&I) == NULL) {
+                errs() << "new entry ";
+                I.dump();
+                DataEntry data_entry(NULL, 2, Size, &F); // managed space
+                data_entry.alloc = &I;
+                data_entry.tryInsertAliasPtr(&I);
+                MAI.newEntry(data_entry);
+              }
+            }
           }
         }
       }
@@ -327,7 +342,6 @@ void OMPPass::calculateAccessFreq(Module &M) {
   errs() << "  ---- Access Frequency Analysis ----\n";
   SmallVector<Function*, 8> VisitedFuncs;
   MemInfo<FuncArgEntry> *FAI = &getAnalysis<FuncArgAccessCGInfoPass>().getFAI();
-  MemInfo<FuncArgEntry> TFAI;
 
   std::string TT = M.getTargetTriple();
   if (TT.find("cuda") == std::string::npos) {
@@ -480,14 +494,19 @@ bool OMPPass::optimizeDataMapping(Module &M) {
             continue;
           ConstantExpr *CE;
           Value *Args;
+          bool IsDataRegion;
+          std::string FuncName;
           if (Callee->getName().find("__tgt_target_data") != std::string::npos) {
             errs() << "  target data call: ";
             Args = CS.getArgOperand(3);
             CE = dyn_cast<ConstantExpr>(CS.getArgOperand(5));
+            IsDataRegion = true;
           } else {
             errs() << "  target call: ";
             Args = CS.getArgOperand(4);
             CE = dyn_cast<ConstantExpr>(CS.getArgOperand(6));
+            IsDataRegion = false;
+            FuncName = CS.getArgOperand(1)->getName();
           }
           assert(Args && CE);
           I.dump();
@@ -497,6 +516,7 @@ bool OMPPass::optimizeDataMapping(Module &M) {
             if (auto *C = dyn_cast<ConstantDataArray>(GV->getOperand(0))) {
               SmallVector<uint64_t, 16> MapTypes;
               bool LocalChanged = false;
+              // iterate through all arguments
               for (unsigned i = 0; i < C->getNumElements(); i++) {
                 auto *ConstantI = dyn_cast<ConstantInt>(C->getElementAsConstant(i));
                 assert(ConstantI && "Suppose to get constant integer");
@@ -507,13 +527,33 @@ bool OMPPass::optimizeDataMapping(Module &M) {
                   Entry->dumpBase();
                   errs() << "    size is ";
                   Entry->size->dump();
+                  double LocalReuse = 0.0;
                   //if ((V & 0x01 || V & 0x02) && !(V & 0x400)) {
                   //  V |= 0x400;
                   //  LocalChanged = true;
                   //}
+                  // set global reuse mark
                   if (!(V & 0xff000)) {
                     V |= (Entry->getRank() << 12) & 0xff000;
                     LocalChanged = true;
+                  }
+                  // set local reuse mark
+                  if (!IsDataRegion) {
+                    FuncArgEntry *TFAE = TFAI.getFuncArgEntry(FuncName, i);
+                    assert(TFAE);
+                    LocalReuse = TFAE->getTgtLoadFreq() + TFAE->getTgtStoreFreq();
+                    errs() << "    local reuse is " << LocalReuse << ";\t\t";
+                    uint32_t LocalReuseScale;
+                    LocalReuse *= 0xf;
+                    if (LocalReuse > 0xff)
+                      LocalReuseScale = 0xff;
+                    else
+                      LocalReuseScale = LocalReuse;
+                    errs() << "    scaled local reuse is " << format_hex(LocalReuseScale, 4) << "\n";
+                    if (!(V & 0xff00000)) {
+                      V |= LocalReuseScale << 20;
+                      LocalChanged = true;
+                    }
                   }
                 }
                 MapTypes.push_back(V);
