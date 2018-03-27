@@ -237,15 +237,14 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
                   BasePtr->dump();
                   NumNewAdded++;
                 }
-              } else {
-                for (auto EV : EVSet) {
-                  SourceEntry = EV.first;
-                  int64_t Diff = EV.second - V;
-                  if (MAI.tryInsertBaseOffsetAliasEntry(SourceEntry, GEPI, Diff)) {
-                    errs() << "  base alias offset entry (" << Diff << ") ";
-                    GEPI->dump();
-                    NumNewAdded++;
-                  }
+              }
+              for (auto EV : EVSet) {
+                SourceEntry = EV.first;
+                int64_t Diff = EV.second - V;
+                if (MAI.tryInsertBaseOffsetAliasEntry(SourceEntry, GEPI, Diff)) {
+                  errs() << "  base alias offset entry (" << Diff << ") ";
+                  GEPI->dump();
+                  NumNewAdded++;
                 }
               }
             }
@@ -465,7 +464,11 @@ bool OMPPass::optimizeDataAllocation(Module &M) {
   std::sort(MAI.getEntries()->begin(), MAI.getEntries()->end(), compareAccessFreq);
   size_t Rank = MAI.getEntries()->size();
   for (auto &E : *MAI.getEntries()) {
-    E.setRank(Rank);
+    // Address rank overflow
+    if (Rank < 0xff)
+      E.setRank(Rank);
+    else
+      E.setRank(0xff);
     Rank--;
     errs() << "Rank " << E.getRank() << " for ";
     E.dumpBase();

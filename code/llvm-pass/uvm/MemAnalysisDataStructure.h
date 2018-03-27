@@ -177,6 +177,7 @@ class DataEntry {
           return false;
       }
       base_alias_ptrs.push_back(alias_ptr);
+      base_offset_alias_ptrs.push_back(std::make_pair(alias_ptr, 0));
       return true;
     }
 
