@@ -507,6 +507,8 @@ bool OMPPass::optimizeDataMapping(Module &M) {
             CE = dyn_cast<ConstantExpr>(CS.getArgOperand(6));
             IsDataRegion = false;
             FuncName = CS.getArgOperand(1)->getName();
+            auto P = FuncName.find(".region_id");
+            FuncName = FuncName.substr(0, P);
           }
           assert(Args && CE);
           I.dump();
@@ -540,19 +542,20 @@ bool OMPPass::optimizeDataMapping(Module &M) {
                   // set local reuse mark
                   if (!IsDataRegion) {
                     FuncArgEntry *TFAE = TFAI.getFuncArgEntry(FuncName, i);
-                    assert(TFAE);
-                    LocalReuse = TFAE->getTgtLoadFreq() + TFAE->getTgtStoreFreq();
-                    errs() << "    local reuse is " << LocalReuse << ";\t\t";
-                    uint32_t LocalReuseScale;
-                    LocalReuse *= 0xf;
-                    if (LocalReuse > 0xff)
-                      LocalReuseScale = 0xff;
-                    else
-                      LocalReuseScale = LocalReuse;
-                    errs() << "    scaled local reuse is " << format_hex(LocalReuseScale, 4) << "\n";
-                    if (!(V & 0xff00000)) {
-                      V |= LocalReuseScale << 20;
-                      LocalChanged = true;
+                    if (TFAE) {
+                      LocalReuse = TFAE->getTgtLoadFreq() + TFAE->getTgtStoreFreq();
+                      errs() << "    local reuse is " << LocalReuse << ";\t\t";
+                      uint32_t LocalReuseScale;
+                      LocalReuse *= 0xf;
+                      if (LocalReuse > 0xff)
+                        LocalReuseScale = 0xff;
+                      else
+                        LocalReuseScale = LocalReuse;
+                      errs() << "    scaled local reuse is " << format_hex(LocalReuseScale, 4) << "\n";
+                      if (!(V & 0xff00000)) {
+                        V |= LocalReuseScale << 20;
+                        LocalChanged = true;
+                      }
                     }
                   }
                 }
