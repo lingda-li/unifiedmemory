@@ -100,15 +100,21 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
                 DataEntry data_entry(NULL, 2, Size, &F); // managed space
                 data_entry.alloc = &I;
                 data_entry.tryInsertAliasPtr(&I);
+                FuncInfoEntry *FIE = new FuncInfoEntry(&F);
+                data_entry.func_map.insert(std::make_pair(&F, FIE));
+                data_entry.insertFuncInfoEntry(FIE);
                 PointerType *BaseType = NULL;
                 // figure out basic type size
-                errs() << I.getName() << "\n";
                 for (auto& U : I.uses()) {
                   User* user = U.getUser();
                   if (auto *BCI = dyn_cast<BitCastInst>(user)) {
                     if (auto *PT = dyn_cast<PointerType>(BCI->getType())) {
                       //assert(BaseType == NULL || BaseType == PT);
                       // vectorization may make multiple bitcasts
+                      if (BaseType == NULL) {
+                        BaseType = PT;
+                        continue;
+                      }
                       auto CurrentSize = DL->getTypeAllocSize(BaseType->getElementType());
                       auto NewSize = DL->getTypeAllocSize(PT->getElementType());
                       if (NewSize < CurrentSize)
