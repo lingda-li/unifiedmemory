@@ -18,6 +18,7 @@ using namespace llvm;
 char OMPPass::ID = 0;
 
 bool OMPPass::runOnModule(Module &M) {
+  DL = new DataLayout(&M);
   errs() << "  ---- OMP (" << M.getName() << ", " << M.getTargetTriple() << ") ----\n";
   if (!analyzeGPUAlloc(M)) {
     errs() << "Error: GPU access anlaysis fails\n";
@@ -69,6 +70,7 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
                   FuncInfoEntry *FIE = new FuncInfoEntry(&F);
                   data_entry.func_map.insert(std::make_pair(&F, FIE));
                   data_entry.insertFuncInfoEntry(FIE);
+                  data_entry.ptr_type = BasePtr->getType();
                   MAI.newEntry(data_entry);
                 } else
                   errs() << "Error: redundant allocation?\n";
@@ -81,6 +83,7 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
                 BasePtr->dump();
                 DataEntry data_entry(BasePtr, 2, Size, &F); // managed space
                 data_entry.alloc = &I;
+                data_entry.ptr_type = BasePtr->getType();
                 MAI.newEntry(data_entry);
               } else
                 errs() << "Error: redundant allocation?\n";
@@ -97,6 +100,27 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
                 DataEntry data_entry(NULL, 2, Size, &F); // managed space
                 data_entry.alloc = &I;
                 data_entry.tryInsertAliasPtr(&I);
+                PointerType *BaseType = NULL;
+                // figure out basic type size
+                errs() << I.getName() << "\n";
+                for (auto& U : I.uses()) {
+                  User* user = U.getUser();
+                  if (auto *BCI = dyn_cast<BitCastInst>(user)) {
+                    if (auto *PT = dyn_cast<PointerType>(BCI->getType())) {
+                      //assert(BaseType == NULL || BaseType == PT);
+                      // vectorization may make multiple bitcasts
+                      auto CurrentSize = DL->getTypeAllocSize(BaseType->getElementType());
+                      auto NewSize = DL->getTypeAllocSize(PT->getElementType());
+                      if (NewSize < CurrentSize)
+                        BaseType = PT;
+                    } else
+                      DEBUG_PRINT
+                  }
+                }
+                if (BaseType == NULL)
+                  BaseType = dyn_cast<PointerType>(I.getType());
+                assert(BaseType);
+                data_entry.ptr_type = BaseType;
                 MAI.newEntry(data_entry);
               }
             }
@@ -547,15 +571,22 @@ bool OMPPass::optimizeDataMapping(Module &M) {
                     FuncArgEntry *TFAE = TFAI.getFuncArgEntry(FuncName, i);
                     if (TFAE) {
                       LocalReuse = TFAE->getTgtLoadFreq() + TFAE->getTgtStoreFreq();
-                      errs() << "    local reuse is " << LocalReuse << ";\t\t";
+                      errs() << "    local reuse is " << LocalReuse << ", ";
+                      LocalReuse /= 0.3;
+                      auto *PT = dyn_cast<PointerType>(Entry->ptr_type);
+                      assert(PT);
+                      auto UnitSize = DL->getTypeAllocSize(PT->getElementType());
+                      assert(UnitSize);
+                      LocalReuse *= UnitSize;
+                      errs() << "" << LocalReuse << " after adjustment;\t\t";
                       uint32_t LocalReuseScale;
-                      LocalReuse *= 0xf;
-                      if (LocalReuse > 0xff)
-                        LocalReuseScale = 0xff;
+                      LocalReuse *= 0x8;
+                      if (LocalReuse > 0xfff)
+                        LocalReuseScale = 0xfff;
                       else
                         LocalReuseScale = LocalReuse;
-                      errs() << "    scaled local reuse is " << format_hex(LocalReuseScale, 4) << "\n";
-                      if (!(V & 0xff00000)) {
+                      errs() << "    scaled local reuse is " << format_hex(LocalReuseScale, 5) << "\n";
+                      if (!(V & 0xfff00000)) {
                         V |= LocalReuseScale << 20;
                         LocalChanged = true;
                       }
