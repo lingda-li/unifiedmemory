@@ -9,7 +9,7 @@ target_compile_features(CudaPass PRIVATE cxx_range_for cxx_auto_type)
 # LLVM is (typically) built with no C++ RTTI. We need to match that;
 # otherwise, we'll get linker errors about missing RTTI data.
 set_target_properties(CudaPass PROPERTIES
-    COMPILE_FLAGS "-fno-rtti"
+    COMPILE_FLAGS "-D__GLIBCXX_USE_CXX11_ABI=0 -fno-rtti"
 )
 
 # Get proper shared-library behavior (where symbols are not necessarily
@@ -31,7 +31,7 @@ target_compile_features(CudaModulePass PRIVATE cxx_range_for cxx_auto_type)
 # LLVM is (typically) built with no C++ RTTI. We need to match that;
 # otherwise, we'll get linker errors about missing RTTI data.
 set_target_properties(CudaModulePass PROPERTIES
-    COMPILE_FLAGS "-fno-rtti"
+    COMPILE_FLAGS "-D__GLIBCXX_USE_CXX11_ABI=0 -fno-rtti"
 )
 
 # Get proper shared-library behavior (where symbols are not necessarily
@@ -55,7 +55,7 @@ target_compile_features(UVMTransformPass PRIVATE cxx_range_for cxx_auto_type)
 # LLVM is (typically) built with no C++ RTTI. We need to match that;
 # otherwise, we'll get linker errors about missing RTTI data.
 set_target_properties(UVMTransformPass PROPERTIES
-    COMPILE_FLAGS "-fno-rtti"
+    COMPILE_FLAGS "-D__GLIBCXX_USE_CXX11_ABI=0 -fno-rtti"
 )
 
 # Get proper shared-library behavior (where symbols are not necessarily
@@ -79,7 +79,7 @@ target_compile_features(MemAnalysisPass PRIVATE cxx_range_for cxx_auto_type)
 # LLVM is (typically) built with no C++ RTTI. We need to match that;
 # otherwise, we'll get linker errors about missing RTTI data.
 set_target_properties(MemAnalysisPass PROPERTIES
-    COMPILE_FLAGS "-fno-rtti"
+    COMPILE_FLAGS "-D__GLIBCXX_USE_CXX11_ABI=0 -fno-rtti"
 )
 
 # Get proper shared-library behavior (where symbols are not necessarily
@@ -102,7 +102,7 @@ target_compile_features(OMPPass PRIVATE cxx_range_for cxx_auto_type)
 # LLVM is (typically) built with no C++ RTTI. We need to match that;
 # otherwise, we'll get linker errors about missing RTTI data.
 set_target_properties(OMPPass PROPERTIES
-    COMPILE_FLAGS "-fno-rtti"
+    COMPILE_FLAGS "-D__GLIBCXX_USE_CXX11_ABI=0 -fno-rtti"
 )
 
 # Get proper shared-library behavior (where symbols are not necessarily

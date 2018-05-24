@@ -1,2 +1,4 @@
-clang --cuda-gpu-arch=sm_60 --cuda-path=/sw/summitdev/cuda/8.0.61-1/ -c -S -emit-llvm test.cu
-clang --cuda-gpu-arch=sm_60 --cuda-path=/sw/summitdev/cuda/8.0.61-1/ -L/sw/summitdev/cuda/8.0.61-1/lib64 -lcudart -ldl -lrt -lpthread test.cu -O3 -o test
+#clang --cuda-gpu-arch=sm_60 --cuda-path=/sw/summitdev/cuda/8.0.61-1/ -c -S -emit-llvm test.cu
+#clang --cuda-gpu-arch=sm_60 --cuda-path=/sw/summitdev/cuda/8.0.61-1/ -L/sw/summitdev/cuda/8.0.61-1/lib64 -lcudart -ldl -lrt -lpthread test.cu -O3 -o test
+clang --cuda-gpu-arch=sm_60 --cuda-path=/sw/summitdev/cuda/8.0.61-1/ -c -S -emit-llvm -Xclang -load -Xclang /ccs/home/lld/git/unifiedmem/code/llvm-pass/build/uvm/libCudaPass.so test.cu
+#clang --cuda-gpu-arch=sm_60 --cuda-path=/sw/summitdev/cuda/8.0.61-1/ test.ll test-cuda-nvptx64-nvidia-cuda-sm_60.ll -O3 -o test

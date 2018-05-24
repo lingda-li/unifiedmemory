@@ -7,11 +7,11 @@
 
 //#define SIZE (1024 * 8)
 //#define STEP 16
-#define SIZE (1024 * 32)
-#define STEP 128
+//#define SIZE (1024 * 32)
+//#define STEP 128
 
-//#define SIZE (1024 * 1024)
-//#define STEP (1024 * 32)
+#define SIZE (1024 * 1024)
+#define STEP (1024 * 32)
 
 //#define SIZE (1024 * 1024 * 1024)
 //#define STEP (1024 * 1024 * 32)
@@ -21,7 +21,7 @@
 //#define SIZE (1024 * 1024 * 512L * 7)
 //#define STEP (1024 * 1024 * 32)
 
-//#define PRINT_LAT
+#define PRINT_LAT
 
 #define LAT_ARRAY_SIZE 12
 #define LAT_LOWER_BOUND 3000

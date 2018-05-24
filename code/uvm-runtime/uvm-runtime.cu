@@ -1,8 +1,8 @@
 #include "stdio.h"
 #include "uvm-runtime.h"
 
-//#define ALL_MANAGED
-#define GPU_PRE_PASCAL
+#define ALL_MANAGED
+//#define GPU_PRE_PASCAL
 
 #define UVM_DEBUG
 #ifdef UVM_DEBUG

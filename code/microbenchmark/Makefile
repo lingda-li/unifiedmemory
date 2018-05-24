@@ -44,6 +44,9 @@ page_ol:
 page_sm:
 	$(GPUCC) $(COMPILE_FLAG) page_sm.cu -o page_sm.out
 
+cpu_page:
+	g++ -O3 cpu_page.cpp -o cpu_page.out
+
 mgpu:
 	$(GPUCC) $(COMPILE_FLAG) mgpu_lat.cu -o mgpu_lat.out
 
@@ -52,6 +55,9 @@ access_sparse:
 
 access_locality:
 	$(GPUCC) $(COMPILE_FLAG) access_locality.cu -o access_locality.out
+
+place:
+	$(GPUCC) $(COMPILE_FLAG) placement.cu -o placement.out
 
 clean:
 	-rm *.out

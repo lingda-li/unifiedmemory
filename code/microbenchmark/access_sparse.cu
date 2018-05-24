@@ -10,8 +10,9 @@
 #define THREAD_PER_BLOCK 256
 #define TOTAL_NUM (BLOCK_NUM * THREAD_PER_BLOCK)
 
-//#define SIZE (1024 * 1024 * 9 * 7 * 5 * 8L)
+#define SIZE (1024 * 1024 * 9 * 7 * 5 * 12L)
 //#define STEP (512)
+//#define DEV_SIZE SIZE
 #define STEP (1)
 
 __global__ void kernel(int *input)
@@ -21,8 +22,8 @@ __global__ void kernel(int *input)
   s_tmp = 0;
 
   unsigned idx = blockIdx.x * blockDim.x + threadIdx.x;
-  unsigned long long begin = SIZE / TOTAL_NUM * idx;
-  unsigned long long end = SIZE / TOTAL_NUM * (idx + 1);
+  unsigned long long begin = DEV_SIZE / TOTAL_NUM * idx;
+  unsigned long long end = DEV_SIZE / TOTAL_NUM * (idx + 1);
   for (unsigned long long i = begin; i < end; i += STEP) {
     tmp = input[i];
     s_tmp += tmp;

@@ -12,7 +12,7 @@
 #define TOTAL_NUM (BLOCK_NUM * THREAD_PER_BLOCK)
 #define MEM_SIZE (1024 * 1024 * 256 * 14L)
 
-#define OCCUPANCY_TUNE
+//#define OCCUPANCY_TUNE
 #define SHMEM_SIZE 2048
 
 #define ITER 1
