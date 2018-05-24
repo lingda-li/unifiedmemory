@@ -41,7 +41,7 @@ bool TFGPass::runOnModule(Module &M) {
           errs() << "  target call: ";
           I.dump();
           TargetRegions.push_back(&I);
-          TargetRegionMap[&I] = Idx;
+          Res.TargetRegionMap[&I] = Idx;
           Idx++;
           //Value *TargetRegionName = CS.getArgOperand(0);
           hasTarget = true;
@@ -61,7 +61,7 @@ bool TFGPass::runOnModule(Module &M) {
   for (auto *F : FuncHasTarget) {
     for (unsigned TIdx = 0; TIdx < TargetNum; TIdx++)
       for (auto &BB : *F)
-        PreDis[TIdx][&BB] = INFDIS;
+        PreDis[TIdx][&BB] = Res.INFDIS;
     BranchProbabilityInfo &BPI =
       getAnalysis<BranchProbabilityInfoWrapperPass>(*F).getBPI();
     VisitMap.shrink_and_clear();
@@ -80,10 +80,10 @@ bool TFGPass::runOnModule(Module &M) {
   }
 
   // Derive the distance at each target region
-  T2TDis = new Target2TargetDisTy[TargetNum];
+  Res.T2TDis = new TargetDistInfo::Target2TargetDisTy[TargetNum];
   for (unsigned TIdx = 0; TIdx < TargetNum; TIdx++) {
     for (unsigned TTIdx = 0; TTIdx < TargetNum; TTIdx++)
-      T2TDis[TIdx][TTIdx] = INFDIS;
+      Res.T2TDis[TIdx][TTIdx] = Res.INFDIS;
     auto *TR = TargetRegions[TIdx];
     auto *BB = TR->getParent();
     // Find target regions after the current one
@@ -96,21 +96,21 @@ bool TFGPass::runOnModule(Module &M) {
           IsFindTR = true;
         continue;
       }
-      if (TargetRegionMap.find(&I) == TargetRegionMap.end())
+      if (Res.TargetRegionMap.find(&I) == Res.TargetRegionMap.end())
         continue;
       NumFoundTR++;
-      unsigned TTIdx = TargetRegionMap[&I];
-      T2TDis[TIdx][TTIdx] = NumFoundTR;
+      unsigned TTIdx = Res.TargetRegionMap[&I];
+      Res.T2TDis[TIdx][TTIdx] = NumFoundTR;
       UpdatedIndexes[TTIdx] = true;
     }
     for (unsigned TTIdx = 0; TTIdx < TargetNum; TTIdx++) {
       if (UpdatedIndexes.find(TTIdx) != UpdatedIndexes.end())
         continue;
-      T2TDis[TIdx][TTIdx] = PosDis[TTIdx][BB] + NumFoundTR + 1;
+      Res.T2TDis[TIdx][TTIdx] = PosDis[TTIdx][BB] + NumFoundTR + 1;
     }
     errs() << "target " << TIdx << ": ";
     for (unsigned TTIdx = 0; TTIdx < TargetNum; TTIdx++) {
-      errs() << "(" << TTIdx << ": " << T2TDis[TIdx][TTIdx] << ") ";
+      errs() << "(" << TTIdx << ": " << Res.T2TDis[TIdx][TTIdx] << ") ";
     }
     errs() << "\n";
   }
@@ -137,7 +137,7 @@ bool TFGPass::traverseDFS(BasicBlock *BB, const BranchProbabilityInfo &BPI) {
   unsigned NSucc = TInst->getNumSuccessors();
   for (unsigned TIdx = 0; TIdx < TargetNum; TIdx++) {
     if (NSucc == 0)
-      PosDis[TIdx][BB] = INFDIS;
+      PosDis[TIdx][BB] = Res.INFDIS;
     else
       PosDis[TIdx][BB] = 0.0;
   }
