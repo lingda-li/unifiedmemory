@@ -10,6 +10,14 @@ public:
   Target2TargetDisTy *T2TDis; // Target to target distance
 
   const double INFDIS = 100.0;
+
+  double getDist(const Instruction *Src, const Instruction *Dst) {
+    assert(TargetRegionMap.find(Src) != TargetRegionMap.end());
+    assert(TargetRegionMap.find(Dst) != TargetRegionMap.end());
+    unsigned SIdx = TargetRegionMap[Src];
+    unsigned DIdx = TargetRegionMap[Dst];
+    return T2TDis[SIdx][DIdx];
+  }
 };
 
 struct TFGPass : public ModulePass {

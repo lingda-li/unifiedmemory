@@ -13,6 +13,7 @@
 #include <algorithm>
 #include "llvm/Support/Format.h"
 #include "OMPPass.h"
+#include "TFGPass.h"
 using namespace llvm;
 
 char OMPPass::ID = 0;
@@ -36,6 +37,7 @@ bool OMPPass::runOnModule(Module &M) {
 void OMPPass::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<BlockFrequencyInfoWrapperPass>();
   AU.addRequired<FuncArgAccessCGInfoPass>();
+  AU.addRequired<TFGPass>();
   AU.setPreservesCFG();
 }
 
