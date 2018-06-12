@@ -210,15 +210,14 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
                 BasePtr->dump();
                 NumNewAdded++;
               }
-            } else {
-              for (auto EV : EVSet) {
-                SourceEntry = EV.first;
-                int64_t Diff = EV.second - V;
-                if (FAI.tryInsertBaseOffsetAliasEntry(SourceEntry, GEPI, Diff)) {
-                  errs() << "  base alias offset entry (" << Diff << ") ";
-                  GEPI->dump();
-                  NumNewAdded++;
-                }
+            }
+            for (auto EV : EVSet) {
+              SourceEntry = EV.first;
+              int64_t Diff = EV.second - V;
+              if (FAI.tryInsertBaseOffsetAliasEntry(SourceEntry, GEPI, Diff)) {
+                errs() << "  base alias offset entry (" << Diff << ") ";
+                GEPI->dump();
+                NumNewAdded++;
               }
             }
           }

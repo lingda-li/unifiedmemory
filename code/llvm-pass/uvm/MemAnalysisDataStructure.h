@@ -141,6 +141,10 @@ class DataEntry {
         if(CAPTR == base_alias_ptr)
           return this;
       }
+      for (auto CAPTR : base_offset_alias_ptrs) {
+        if(CAPTR.first == base_alias_ptr && CAPTR.second == 0)
+          return this;
+      }
       return NULL;
     }
 
@@ -221,6 +225,11 @@ class DataEntry {
       errs() << "BaseAlias: ";
       for (Value *CAPTR : base_alias_ptrs) {
         CAPTR->dump();
+      }
+      errs() << "BaseOffsetAlias: ";
+      for (auto CAPTR : base_offset_alias_ptrs) {
+        errs() << "(" << CAPTR.second << ") ";
+        CAPTR.first->dump();
       }
       errs() << "Alias: ";
       for (Value *CAPTR : alias_ptrs) {

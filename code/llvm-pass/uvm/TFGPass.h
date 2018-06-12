@@ -18,6 +18,12 @@ public:
     unsigned DIdx = TargetRegionMap[Dst];
     return T2TDis[SIdx][DIdx];
   }
+
+  unsigned getInt(double DD) {
+    if (DD > 0x3f)
+      return 0x3f;
+    return (unsigned)DD;
+  }
 };
 
 struct TFGPass : public ModulePass {

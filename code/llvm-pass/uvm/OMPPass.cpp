@@ -13,7 +13,6 @@
 #include <algorithm>
 #include "llvm/Support/Format.h"
 #include "OMPPass.h"
-#include "TFGPass.h"
 using namespace llvm;
 
 char OMPPass::ID = 0;
@@ -30,11 +29,12 @@ bool OMPPass::runOnModule(Module &M) {
     return false;
   }
   calculateAccessFreq(M);
-  optimizeDataAllocation(M);
+  prepareOpt(M);
   return optimizeDataMapping(M);
 }
 
 void OMPPass::getAnalysisUsage(AnalysisUsage &AU) const {
+  AU.addRequired<BranchProbabilityInfoWrapperPass>();
   AU.addRequired<BlockFrequencyInfoWrapperPass>();
   AU.addRequired<FuncArgAccessCGInfoPass>();
   AU.addRequired<TFGPass>();
@@ -270,6 +270,7 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
                   NumNewAdded++;
                 }
               }
+              // FIXME: if a register can be alias to an entry with multiple offsets, there is a bug
               for (auto EV : EVSet) {
                 SourceEntry = EV.first;
                 int64_t Diff = EV.second - V;
@@ -322,7 +323,7 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
                 assert(argcount == i);
                 if (AliasTy == 1) {
                   if (MAI.tryInsertAliasEntry(SourceEntry, &(*A))) {
-                    assert(SourceEntry->func_map.find(Callee) == SourceEntry->func_map.end());
+                    //assert(SourceEntry->func_map.find(Callee) == SourceEntry->func_map.end());
                     FuncInfoEntry *FIE = new FuncInfoEntry(Callee, &I, &(*A), OPD, 1);
                     SourceEntry->insertFuncInfoEntry(FIE);
                     assert(SourceEntry->func_map.find(&F) != SourceEntry->func_map.end());
@@ -333,7 +334,7 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
                   }
                 } else {
                   if (MAI.tryInsertBaseAliasEntry(SourceEntry, &(*A))) {
-                    assert(SourceEntry->func_map.find(Callee) == SourceEntry->func_map.end());
+                    //assert(SourceEntry->func_map.find(Callee) == SourceEntry->func_map.end());
                     FuncInfoEntry *FIE = new FuncInfoEntry(Callee, &I, &(*A), OPD, 2);
                     SourceEntry->insertFuncInfoEntry(FIE);
                     assert(SourceEntry->func_map.find(&F) != SourceEntry->func_map.end());
@@ -394,8 +395,8 @@ void OMPPass::calculateAccessFreq(Module &M) {
     }
   }
 
-  for (auto &E : *MAI.getEntries()) {
-    Function *F = E.getFunc();
+  for (auto &MAIE : *MAI.getEntries()) {
+    Function *F = MAIE.getFunc();
     SmallVector<Function*, 8>::const_iterator I = VisitedFuncs.begin();
     for (; I != VisitedFuncs.end(); I++)
       if (*I == F)
@@ -488,9 +489,8 @@ void OMPPass::calculateAccessFreq(Module &M) {
   }
 }
 
-bool OMPPass::optimizeDataAllocation(Module &M) {
-  bool Changed = false;
-  errs() << "  ---- Data Allocation Optimization ----\n";
+void OMPPass::prepareOpt(Module &M) {
+  errs() << "  ---- Optimization Preparation ----\n";
 
   // Rank by frequency
   std::sort(MAI.getEntries()->begin(), MAI.getEntries()->end(), compareAccessFreq);
@@ -509,12 +509,55 @@ bool OMPPass::optimizeDataAllocation(Module &M) {
     errs() << "  load: " << E.getTgtLoadFreq() << "\t\t";
     errs() << "  store: " << E.getTgtStoreFreq() << " (target)\n";
   }
-  return Changed;
+
+  // Find related target regions
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    for (auto &BB : F) {
+      for (auto &I : BB) {
+        if (isa<CallInst>(I) || isa<InvokeInst>(I)) {
+          CallSite CS(&I);
+          auto *Callee = CS.getCalledFunction();
+          if (Callee == NULL || Callee->getName().find("__tgt_target") != 0)
+            continue;
+          if (Callee->getName().find("__tgt_target_data") != std::string::npos)
+            continue;
+          auto *CE = dyn_cast<ConstantExpr>(CS.getArgOperand(6));
+          auto *Args = CS.getArgOperand(4);
+          if (auto *GV = dyn_cast<GlobalVariable>(CE->getOperand(0))) {
+            if (auto *C = dyn_cast<ConstantDataArray>(GV->getOperand(0))) {
+              // iterate through all arguments
+              for (unsigned i = 0; i < C->getNumElements(); i++) {
+                auto *ConstantI = dyn_cast<ConstantInt>(C->getElementAsConstant(i));
+                assert(ConstantI && "Suppose to get constant integer");
+                int64_t V = ConstantI->getSExtValue();
+                if (auto *Entry = MAI.getBaseOffsetAliasEntries(Args, i)) {
+                  Entry->kernel.push_back(&I);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+unsigned OMPPass::getReuseDist(DataEntry *E, Instruction *Src) {
+  double minDist = TDI->INFDIS;
+  for (auto Dst : E->kernel) {
+    double Dist = TDI->getDist(Src, Dst);
+    if (minDist > Dist)
+      minDist = Dist;
+  }
+  return TDI->getInt(minDist);
 }
 
 bool OMPPass::optimizeDataMapping(Module &M) {
   bool Changed = false;
   errs() << "  ---- Data Mapping Optimization ----\n";
+  TDI = &getAnalysis<TFGPass>().getT2T();
   for (Function &F : M) {
     if (F.isDeclaration())
       continue;
@@ -570,7 +613,9 @@ bool OMPPass::optimizeDataMapping(Module &M) {
                   //  LocalChanged = true;
                   //}
                   // set global reuse mark
-                  if (!(V & 0xff000)) {
+                  errs() << "    global reuse is " << format_hex(Entry->getRank(), 4) << "\n";
+                  if (((V & 0xff000) >> 12) != Entry->getRank()) {
+                    V &= ~0xff000;
                     V |= (Entry->getRank() << 12) & 0xff000;
                     LocalChanged = true;
                   }
@@ -587,27 +632,53 @@ bool OMPPass::optimizeDataMapping(Module &M) {
                       assert(UnitSize);
                       LocalReuse *= UnitSize;
                       errs() << "" << LocalReuse << " after adjustment;\t\t";
-                      uint32_t LocalReuseScale;
+                      uint64_t LocalReuseScale;
                       LocalReuse *= 0x8;
                       if (LocalReuse > 0xfff)
                         LocalReuseScale = 0xfff;
                       else
                         LocalReuseScale = LocalReuse;
                       errs() << "    scaled local reuse is " << format_hex(LocalReuseScale, 5) << "\n";
-                      if (!(V & 0xfff00000)) {
+                      if (((V & 0xfff00000)) >> 20 != LocalReuseScale) {
+                        V &= ~0xfff00000;
                         V |= LocalReuseScale << 20;
                         LocalChanged = true;
                       }
                     }
+                  }
+                  // set reuse distance
+                  uint64_t ReuseDist = getReuseDist(Entry, &I);
+                  errs() << "    reuse distance is " << format_hex(ReuseDist, 4) << "\n";
+                  if (((V & 0x3f0000000000) >> 40) != ReuseDist) {
+                    V &= ~0x3f0000000000;
+                    V |= ReuseDist << 40;
+                    LocalChanged = true;
                   }
                 }
                 MapTypes.push_back(V);
               }
               if (LocalChanged) {
                 auto *NCDA = ConstantDataArray::get(C->getContext(), MapTypes);
-                C->replaceAllUsesWith(NCDA);
+                std::stringstream NGVName;
+                NGVName << (std::string)GV->getName() << "." << ChangedNum;
+                GlobalVariable *NGV = new GlobalVariable(M, NCDA->getType(), true, GlobalValue::PrivateLinkage, NCDA, NGVName.str());
+                NGV->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
                 errs() << "    map type changed: ";
-                GV->dump();
+                NGV->dump();
+                //GV->replaceAllUsesWith(NGV);
+                //CE->setOperand(0, NGV);
+                LLVMContext& Ctx = M.getContext();
+                IRBuilder<> builder(Ctx);
+                auto MapTypesArrayArg = builder.CreateConstInBoundsGEP2_32(
+                    ArrayType::get(Type::getInt64Ty(Ctx), C->getNumElements()),
+                    NGV,
+                    /*Idx0=*/0,
+                    /*Idx1=*/0);
+                if (IsDataRegion)
+                  I.setOperand(5, MapTypesArrayArg);
+                else
+                  I.setOperand(6, MapTypesArrayArg);
+                ChangedNum++;
                 Changed = true;
               }
             }
@@ -633,9 +704,11 @@ bool compareAccessFreq(DataEntry A, DataEntry B) {
 // http://adriansampson.net/blog/clangpass.html
 static void registerOMPPass(const PassManagerBuilder &,
                          legacy::PassManagerBase &PM) {
+  PM.add(new BranchProbabilityInfoWrapperPass());
   PM.add(new BlockFrequencyInfoWrapperPass());
   //PM.add(new CallGraphWrapperPass());
   PM.add(new FuncArgAccessCGInfoPass());
+  PM.add(new TFGPass());
   PM.add(new OMPPass());
 }
 static RegisterStandardPasses

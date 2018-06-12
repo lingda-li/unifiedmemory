@@ -36,8 +36,8 @@ bool TFGPass::runOnModule(Module &M) {
             continue;
           if (Callee->getName().find("__tgt_target") != 0)
             continue;
-          if (Callee->getName().find("__tgt_target_data") != std::string::npos)
-            continue;
+          //if (Callee->getName().find("__tgt_target_data") != std::string::npos)
+          //  continue;
           errs() << "  target call: ";
           I.dump();
           TargetRegions.push_back(&I);
@@ -228,6 +228,7 @@ void TFGPass::dumpDis(Function *F) {
   errs() << "Diff: " << TotalDiff << "\n";
 }
 
+/*
 // Automatically enable the pass.
 // http://adriansampson.net/blog/clangpass.html
 static void registerTFGPass(const PassManagerBuilder &,
@@ -240,3 +241,4 @@ static RegisterStandardPasses
   RegisterMyPass(PassManagerBuilder::EP_OptimizerLast,
   //RegisterMyPass(PassManagerBuilder::EP_ModuleOptimizerEarly,
                  registerTFGPass);
+*/
