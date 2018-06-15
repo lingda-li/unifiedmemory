@@ -20,7 +20,6 @@ char TFGPass::ID = 0;
 
 bool TFGPass::runOnModule(Module &M) {
   // Find target regions
-  std::vector<Function*> FuncHasTarget;
   errs() << "  ---- Identify Target Regions ----\n";
   unsigned Idx = 0;
   for (Function &F : M) {
@@ -57,7 +56,8 @@ bool TFGPass::runOnModule(Module &M) {
   PreDis = new BBTargetDisTy[TargetNum];
   PosDis = new BBTargetDisTy[TargetNum];
 
-  // Calculate target region distance
+  errs() << "  ---- Target Distance Calculation ----\n";
+  // Calculate BB to target region distance
   for (auto *F : FuncHasTarget) {
     for (unsigned TIdx = 0; TIdx < TargetNum; TIdx++)
       for (auto &BB : *F)

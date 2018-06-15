@@ -30,6 +30,7 @@ struct TFGPass : public ModulePass {
   static char ID;
   std::vector<Instruction*> TargetRegions;
   unsigned TargetNum;
+  std::vector<Function*> FuncHasTarget;
   DenseMap<const BasicBlock*, bool> VisitMap;
   double TotalDiff;
 
