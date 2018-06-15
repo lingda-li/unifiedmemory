@@ -51,33 +51,36 @@ bool TFGPass::runOnModule(Module &M) {
       FuncHasTarget.push_back(&F);
   }
 
+  //FIXME: functions that call functions in FuncHasTarget should be added to FuncHasTarget
+
   // Allocate space
   TargetNum = TargetRegions.size();
-  PreDis = new BBTargetDisTy[TargetNum];
-  PosDis = new BBTargetDisTy[TargetNum];
+  if (TargetNum == 0)
+    return false;
 
   errs() << "  ---- Target Distance Calculation ----\n";
+  PreDis = new BBTargetDisTy[TargetNum];
+  PosDis = new BBTargetDisTy[TargetNum];
   // Calculate BB to target region distance
-  for (auto *F : FuncHasTarget) {
-    for (unsigned TIdx = 0; TIdx < TargetNum; TIdx++)
-      for (auto &BB : *F)
-        PreDis[TIdx][&BB] = Res.INFDIS;
-    BranchProbabilityInfo &BPI =
-      getAnalysis<BranchProbabilityInfoWrapperPass>(*F).getBPI();
-    VisitMap.shrink_and_clear();
-    // Traverse CFG
-    bool R;
-    unsigned NIter = 0;
-    do {
-      TotalDiff = 0.0;
-      for (auto &BB : *F)
-        VisitMap[&BB] = false;
-      R = traverseDFS(&F->getEntryBlock(), BPI);
-      NIter++;
-      //dumpDis(F);
-    } while (R && TotalDiff > 10.0);
-    errs() << "" << F->getName() << " converges after " << NIter << " iterations\n";
-  }
+  auto *F = FuncHasTarget.back(); // assume this is the main function
+  for (unsigned TIdx = 0; TIdx < TargetNum; TIdx++)
+    for (auto &BB : *F)
+      PreDis[TIdx][&BB] = Res.INFDIS;
+  BranchProbabilityInfo &BPI =
+    getAnalysis<BranchProbabilityInfoWrapperPass>(*F).getBPI();
+  VisitMap.shrink_and_clear();
+  // Traverse CFG
+  bool R;
+  unsigned NIter = 0;
+  do {
+    TotalDiff = 0.0;
+    for (auto &BB : *F)
+      VisitMap[&BB] = false;
+    R = traverseDFS(&F->getEntryBlock(), BPI);
+    NIter++;
+    //dumpDis(F);
+  } while (R && TotalDiff > 10.0);
+  errs() << "" << F->getName() << " converges after " << NIter << " iterations\n";
 
   // Derive the distance at each target region
   Res.T2TDis = new TargetDistInfo::Target2TargetDisTy[TargetNum];
@@ -199,8 +202,11 @@ bool TFGPass::traverseDFS(BasicBlock *BB, const BranchProbabilityInfo &BPI) {
     if (TR->getParent() == BB) {
       PreDis[TIdx][BB] = CBBTRN;
       CBBTRN++;
-    } else
+    } else {
       PreDis[TIdx][BB] = PosDis[TIdx][BB] + BBTRN;
+      if (PreDis[TIdx][BB] > Res.INFDIS)
+        PreDis[TIdx][BB] = Res.INFDIS;
+    }
     TotalDiff += fabs(OldPreDis - PreDis[TIdx][BB]);
   }
 
