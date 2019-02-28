@@ -2,6 +2,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
@@ -257,9 +258,9 @@ namespace {
       bool Changed = false;
       LLVMContext& Ctx = F.getContext();
       auto* I8PPTy = PointerType::get(PointerType::get(Type::getInt8Ty(Ctx), 0), 0);
-      Constant* cudaMallocManagedFunc = F.getParent()->getOrInsertFunction("cudaMallocManaged", Type::getInt32Ty(Ctx), I8PPTy, Type::getInt64Ty(Ctx), Type::getInt32Ty(Ctx), NULL);
-      Constant* cudaDeviceSynchronizeFunc = F.getParent()->getOrInsertFunction("cudaDeviceSynchronize", Type::getInt32Ty(Ctx), NULL);
-      Constant* cudaFreeFunc = F.getParent()->getOrInsertFunction("cudaFree", Type::getInt32Ty(Ctx), PointerType::get(Type::getInt8Ty(Ctx), 0), NULL);
+      auto cudaMallocManagedFunc = F.getParent()->getOrInsertFunction("cudaMallocManaged", Type::getInt32Ty(Ctx), I8PPTy, Type::getInt64Ty(Ctx), Type::getInt32Ty(Ctx), nullptr);
+      auto cudaDeviceSynchronizeFunc = F.getParent()->getOrInsertFunction("cudaDeviceSynchronize", Type::getInt32Ty(Ctx), nullptr);
+      auto cudaFreeFunc = F.getParent()->getOrInsertFunction("cudaFree", Type::getInt32Ty(Ctx), PointerType::get(Type::getInt8Ty(Ctx), 0), nullptr);
       Changed = true;
       SmallVector<Instruction*, 8> InstsToDelete;
 

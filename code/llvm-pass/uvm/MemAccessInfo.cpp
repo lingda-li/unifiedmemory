@@ -105,22 +105,20 @@ bool MemAccessInfoPass::analyzeGPUAlloc(Module &M) {
     if (F.isDeclaration())
       continue;
     // Add an entry for every pointer argument
-    Function::ArgumentListType::iterator AIT;
-    for (AIT = F.getArgumentList().begin(); AIT != F.getArgumentList().end(); AIT++) {
-      Value *A = &*AIT;
-      auto *PT = dyn_cast<PointerType>(A->getType());
+    for (auto &A : F.args()) {
+      auto *PT = dyn_cast<PointerType>(A.getType());
       if (!PT)
         continue;
-      A->dump();
-      if (MAI.getAliasEntry(A)) {
+      A.dump();
+      if (MAI.getAliasEntry(&A)) {
         continue;
       }
-      if (MAI.getBaseAliasEntry(A)) {
+      if (MAI.getBaseAliasEntry(&A)) {
         errs() << "Warning: pass a base pointer to GPU?\n";
         return false;
       }
       DataEntry E;
-      bool Succeed = MAI.tryInsertAliasEntry(&E, A);
+      bool Succeed = MAI.tryInsertAliasEntry(&E, &A);
       assert(Succeed);
       MAI.newEntry(E);
     }
@@ -289,8 +287,8 @@ bool MemAccessInfoPass::analyzePointerPropagation(Module &M) {
                 }
                 Use = true;
                 int argcount = 0;
-                Function::ArgumentListType::iterator A;
-                for (A = Callee->getArgumentList().begin(); A != Callee->getArgumentList().end(); A++) {
+                Function::arg_iterator A;
+                for (A = Callee->arg_begin(); A != Callee->arg_end(); A++) {
                   if (argcount == i)
                     break;
                   argcount++;

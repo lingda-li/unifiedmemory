@@ -33,8 +33,32 @@ bool TFGPass::runOnModule(Module &M) {
           auto *Callee = CS.getCalledFunction();
           if (Callee == NULL)
             continue;
-          if (Callee->getName().find("__tgt_target") != 0)
+          if (Callee->getName().find("__tgt_target") != 0) {
+            // Check if this function includes target regions
+            auto FIT = find(FuncHasTarget.begin(), FuncHasTarget.end(), Callee);
+            if (FIT == FuncHasTarget.end())
+              continue;
+            // Insert special successor in this case
+            auto *SBB = &BB;
+            if (SuccMap.find(SBB) != SuccMap.end()) {
+              Function *CF;
+              while (1) {
+                auto *EBB = SuccMap[SBB];
+                CF = EBB->getParent();
+                assert(RetSuccMap.find(CF) != RetSuccMap.end());
+                SBB = RetSuccMap[CF].second;
+                if (RetSuccMap[CF].first == false)
+                  break;
+              }
+              assert(SBB == &BB);
+              assert(RetSuccMap.find(Callee) == RetSuccMap.end());
+              RetSuccMap[CF] = std::make_pair(true, &Callee->getEntryBlock());
+            } else
+              SuccMap[SBB] = &Callee->getEntryBlock();
+            assert(RetSuccMap.find(Callee) == RetSuccMap.end());
+            RetSuccMap[Callee] = std::make_pair(false, &BB);
             continue;
+          }
           //if (Callee->getName().find("__tgt_target_data") != std::string::npos)
           //  continue;
           errs() << "  target call: ";
@@ -52,6 +76,7 @@ bool TFGPass::runOnModule(Module &M) {
   }
 
   //FIXME: functions that call functions in FuncHasTarget should be added to FuncHasTarget
+  //FIXME: cannot deal with cases when a basic block includes both target and function calls
 
   // Allocate space
   TargetNum = TargetRegions.size();
@@ -62,25 +87,25 @@ bool TFGPass::runOnModule(Module &M) {
   PreDis = new BBTargetDisTy[TargetNum];
   PosDis = new BBTargetDisTy[TargetNum];
   // Calculate BB to target region distance
-  auto *F = FuncHasTarget.back(); // assume this is the main function
+  auto *MAIN = FuncHasTarget.back(); // assume this is the main function
   for (unsigned TIdx = 0; TIdx < TargetNum; TIdx++)
-    for (auto &BB : *F)
-      PreDis[TIdx][&BB] = Res.INFDIS;
-  BranchProbabilityInfo &BPI =
-    getAnalysis<BranchProbabilityInfoWrapperPass>(*F).getBPI();
+    for (auto *F : FuncHasTarget)
+      for (auto &BB : *F)
+        PreDis[TIdx][&BB] = Res.INFDIS;
   VisitMap.shrink_and_clear();
   // Traverse CFG
   bool R;
   unsigned NIter = 0;
   do {
     TotalDiff = 0.0;
-    for (auto &BB : *F)
-      VisitMap[&BB] = false;
-    R = traverseDFS(&F->getEntryBlock(), BPI);
+    for (auto *F : FuncHasTarget)
+      for (auto &BB : *F)
+        VisitMap[&BB] = false;
+    R = traverseDFS(&MAIN->getEntryBlock());
     NIter++;
-    //dumpDis(F);
+    //dumpDis(MAIN);
   } while (R && TotalDiff > 10.0);
-  errs() << "" << F->getName() << " converges after " << NIter << " iterations\n";
+  errs() << "" << MAIN->getName() << " converges after " << NIter << " iterations\n";
 
   // Derive the distance at each target region
   Res.T2TDis = new TargetDistInfo::Target2TargetDisTy[TargetNum];
@@ -129,9 +154,11 @@ void TFGPass::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesAll();
 }
 
-bool TFGPass::traverseDFS(BasicBlock *BB, const BranchProbabilityInfo &BPI) {
+bool TFGPass::traverseDFS(BasicBlock *BB) {
   if (VisitMap[BB])
     return true;
+  BranchProbabilityInfo &BPI =
+    getAnalysis<BranchProbabilityInfoWrapperPass>(*(BB->getParent())).getBPI();
   bool Recursive = false;
   auto *TInst = BB->getTerminator();
   VisitMap[BB] = true;
@@ -144,6 +171,22 @@ bool TFGPass::traverseDFS(BasicBlock *BB, const BranchProbabilityInfo &BPI) {
     else
       PosDis[TIdx][BB] = 0.0;
   }
+  /*
+  auto *F = BB->getParent();
+  if (SuccMap.find(BB) != SuccMap.end()) { // Go to the entry block of callee
+  } else if (NSucc == 0 && RetSuccMap.find(F) != RetSuccMap.end()) { // Return to the caller
+    auto IsTrueSucc = RetSuccMap[F].first;
+    auto NBB = RetSuccMap[F].second;
+    if (IsTrueSucc) // Jump to another callee
+      NSucc = 1;
+    else {
+      NSucc = NBB->getTerminator()->getNumSuccessors();
+      auto *CF = NBB->getParent();
+      while (NSucc == 0 && RetSuccMap.find(CF) != RetSuccMap.end()) {
+      }
+    }
+  }
+  */
   //for (unsigned I = 0; I < NSucc; I++) {
   //  auto *NBB = TInst->getSuccessor(I);
   //  auto P = BPI.getEdgeProbability(BB, I);
@@ -157,7 +200,7 @@ bool TFGPass::traverseDFS(BasicBlock *BB, const BranchProbabilityInfo &BPI) {
   std::vector<bool> SuccRecur;
   for (unsigned I = 0; I < NSucc; I++) {
     auto *NBB = TInst->getSuccessor(I);
-    if (traverseDFS(NBB, BPI)) {
+    if (traverseDFS(NBB)) {
       SuccRecur.push_back(true);
       Recursive = true;
     } else

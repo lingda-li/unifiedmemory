@@ -33,6 +33,11 @@ struct TFGPass : public ModulePass {
   std::vector<Function*> FuncHasTarget;
   DenseMap<const BasicBlock*, bool> VisitMap;
   double TotalDiff;
+  // Special successor to address function calls
+  DenseMap<const BasicBlock*, BasicBlock*> SuccMap;
+  // successor for return blocks of a function
+  // bool in the pair represents if this is true successor, or bridge successor
+  DenseMap<const Function*, std::pair<bool, BasicBlock*>> RetSuccMap;
 
   typedef DenseMap<const BasicBlock*, double> BBTargetDisTy;
   BBTargetDisTy *PreDis; // At the very beginning of a BB, how soon it supposes to see a target region
@@ -45,7 +50,7 @@ struct TFGPass : public ModulePass {
 
   virtual bool runOnModule(Module &M);
 
-  bool traverseDFS(BasicBlock *BB, const BranchProbabilityInfo &BPI);
+  bool traverseDFS(BasicBlock *BB);
   void dumpDis(Function *F);
   TargetDistInfo &getT2T() { return Res; }
 

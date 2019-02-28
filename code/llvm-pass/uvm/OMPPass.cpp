@@ -2,6 +2,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
@@ -314,8 +315,8 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
                 }
                 Use = true;
                 int argcount = 0;
-                Function::ArgumentListType::iterator A;
-                for (A = Callee->getArgumentList().begin(); A != Callee->getArgumentList().end(); A++) {
+                Function::arg_iterator A;
+                for (A = Callee->arg_begin(); A != Callee->arg_end(); A++) {
                   if (argcount == i)
                     break;
                   argcount++;

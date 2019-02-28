@@ -74,15 +74,13 @@ bool FuncArgAccessCGInfoPass::runOnModule(Module &M) {
 
 bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
   // Add an entry for every pointer argument
-  Function::ArgumentListType::iterator AIT;
   int i = 0;
-  for (AIT = F.getArgumentList().begin(); AIT != F.getArgumentList().end(); AIT++, i++) {
-    Value *A = &*AIT;
-    auto *PT = dyn_cast<PointerType>(A->getType());
+  for (auto &A : F.args()) {
+    auto *PT = dyn_cast<PointerType>(A.getType());
     if (!PT)
       continue;
-    FuncArgEntry E(&F, A, i, F.getName());
-    if (!E.tryInsertAliasPtr(A))
+    FuncArgEntry E(&F, &A, i, F.getName());
+    if (!E.tryInsertAliasPtr(&A))
       assert(0);
     FAI.newEntry(E);
   }

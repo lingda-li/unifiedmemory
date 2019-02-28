@@ -1,6 +1,7 @@
 #include "llvm/Pass.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/Analysis/CallGraph.h"
 #include "MemAnalysisDataStructure.h"
 #include "CGMemAnalysis.h"
 #include "MemAccessInfoPass.h"

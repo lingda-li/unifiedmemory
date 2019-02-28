@@ -1,4 +1,5 @@
 #include "llvm/Pass.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instruction.h"
@@ -18,7 +19,7 @@ namespace {
       bool Changed = false;
       LLVMContext& Ctx = F.getContext();
       auto* I8PPTy = PointerType::get(PointerType::get(Type::getInt8Ty(Ctx), 0), 0);
-      Constant* cudaMallocManagedFunc = F.getParent()->getOrInsertFunction("cudaMallocManaged", Type::getInt32Ty(Ctx), I8PPTy, Type::getInt64Ty(Ctx), NULL);
+      auto cudaMallocManagedFunc = F.getParent()->getOrInsertFunction("cudaMallocManaged", Type::getInt32Ty(Ctx), I8PPTy, Type::getInt64Ty(Ctx), nullptr);
       SmallVector<CallInst *, 2> CallsToDelete;
 
       for (auto &BB : F) {

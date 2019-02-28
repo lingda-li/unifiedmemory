@@ -1,4 +1,5 @@
 #include "llvm/Pass.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instruction.h"
@@ -166,8 +167,8 @@ namespace {
                     }
                     Use = true;
                     int argcount = 0;
-                    Function::ArgumentListType::iterator A;
-                    for (A = Callee->getArgumentList().begin(); A != Callee->getArgumentList().end(); A++) {
+                    Function::arg_iterator A;
+                    for (A = Callee->arg_begin(); A != Callee->arg_end(); A++) {
                       if (argcount == i)
                         break;
                       argcount++;
@@ -281,11 +282,11 @@ namespace {
       bool Changed = false;
       LLVMContext& Ctx = M.getContext();
       auto UVMMemInfoTy = StructType::create(Ctx, "struct.uvmMallocInfo");
-      UVMMemInfoTy->setBody(PointerType::get(Type::getInt8Ty(Ctx), 0), Type::getInt64Ty(Ctx), PointerType::get(Type::getInt8Ty(Ctx), 0), Type::getInt8Ty(Ctx), NULL);
+      UVMMemInfoTy->setBody(PointerType::get(Type::getInt8Ty(Ctx), 0), Type::getInt64Ty(Ctx), PointerType::get(Type::getInt8Ty(Ctx), 0), Type::getInt8Ty(Ctx));
       auto *UVMMemInfoPTy = PointerType::get(UVMMemInfoTy, 0);
-      Constant* uvmMallocFunc = M.getOrInsertFunction("__uvm_malloc", Type::getVoidTy(Ctx), UVMMemInfoPTy, NULL);
-      Constant* uvmMemcpyFunc = M.getOrInsertFunction("__uvm_memcpy", Type::getVoidTy(Ctx), UVMMemInfoPTy, Type::getInt32Ty(Ctx), NULL);
-      Constant* uvmFreeFunc = M.getOrInsertFunction("__uvm_free", Type::getVoidTy(Ctx), UVMMemInfoPTy, NULL);
+      auto uvmMallocFunc = M.getOrInsertFunction("__uvm_malloc", Type::getVoidTy(Ctx), UVMMemInfoPTy, nullptr);
+      auto uvmMemcpyFunc = M.getOrInsertFunction("__uvm_memcpy", Type::getVoidTy(Ctx), UVMMemInfoPTy, Type::getInt32Ty(Ctx), nullptr);
+      auto uvmFreeFunc = M.getOrInsertFunction("__uvm_free", Type::getVoidTy(Ctx), UVMMemInfoPTy, nullptr);
       SmallVector<Instruction*, 8> InstsToDelete;
 
       // Allocate initial UVM runtime data structures
