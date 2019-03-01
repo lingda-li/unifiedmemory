@@ -67,7 +67,8 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
                 Value *BasePtr = AI;
                 if (MAI.getBaseAliasEntry(BasePtr) == NULL) {
                   errs() << "new entry ";
-                  BasePtr->dump();
+                  BasePtr->print(errs());
+                  errs() << "\n";
                   DataEntry data_entry(BasePtr, 2, Size, &F);
                   data_entry.alloc = &I;
                   FuncInfoEntry *FIE = new FuncInfoEntry(&F);
@@ -83,7 +84,8 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
               Value *BasePtr = AI;
               if (MAI.getBaseAliasEntry(BasePtr) == NULL) {
                 errs() << "new entry ";
-                BasePtr->dump();
+                BasePtr->print(errs());
+                errs() << "\n";
                 DataEntry data_entry(BasePtr, 2, Size, &F); // managed space
                 data_entry.alloc = &I;
                 data_entry.ptr_type = BasePtr->getType();
@@ -99,7 +101,8 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
               int64_t V = ConstantI->getSExtValue();
               if (V == -100 && MAI.getAliasEntry(&I) == NULL) {
                 errs() << "new entry ";
-                I.dump();
+                I.print(errs());
+                errs() << "\n";
                 DataEntry data_entry(NULL, 2, Size, &F); // managed space
                 data_entry.alloc = &I;
                 data_entry.tryInsertAliasPtr(&I);
@@ -168,7 +171,8 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
             if (DataEntry *InsertEntry = MAI.getBaseAliasEntry(LoadAddr)) {
               if(MAI.tryInsertAliasEntry(InsertEntry, LI)) {
                 errs() << "  alias entry ";
-                LI->dump();
+                LI->print(errs());
+                errs() << "\n";
                 NumNewAdded++;
               }
             }
@@ -178,7 +182,8 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
             if (DataEntry *InsertEntry = MAI.getAliasEntry(StoreContent)) {
               if(MAI.tryInsertBaseAliasEntry(InsertEntry, StoreAddr)) {
                 errs() << "  base alias entry ";
-                StoreAddr->dump();
+                StoreAddr->print(errs());
+                errs() << "\n";
                 NumNewAdded++;
               }
             }
@@ -195,7 +200,8 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
             if (auto *SourceEntry = MAI.getAliasEntry(CastSource)) {
               if (MAI.tryInsertAliasEntry(SourceEntry, BCI)) {
                 errs() << "  alias entry ";
-                BCI->dump();
+                BCI->print(errs());
+                errs() << "\n";
                 NumNewAdded++;
                 NumAlias++;
               }
@@ -203,7 +209,8 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
             if (auto *SourceEntry = MAI.getBaseAliasEntry(CastSource)) {
               if (MAI.tryInsertBaseAliasEntry(SourceEntry, BCI)) {
                 errs() << "  base alias entry ";
-                BCI->dump();
+                BCI->print(errs());
+                errs() << "\n";
                 NumNewAdded++;
                 NumAlias++;
               }
@@ -211,7 +218,8 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
             if (auto *SourceEntry = MAI.getAliasEntry(BCI)) {
               if (MAI.tryInsertAliasEntry(SourceEntry, CastSource)) {
                 errs() << "  alias entry ";
-                CastSource->dump();
+                CastSource->print(errs());
+                errs() << "\n";
                 NumNewAdded++;
                 NumAlias++;
               }
@@ -219,14 +227,16 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
             if (auto *SourceEntry = MAI.getBaseAliasEntry(BCI)) {
               if (MAI.tryInsertBaseAliasEntry(SourceEntry, CastSource)) {
                 errs() << "  base alias entry ";
-                CastSource->dump();
+                CastSource->print(errs());
+                errs() << "\n";
                 NumNewAdded++;
                 NumAlias++;
               }
             }
             if (NumAlias > 1) {
               errs() << "Error: a value is alias for multiple entries\n";
-              I.dump();
+              I.print(errs());
+              errs() << "\n";
               return false;
             }
           } else if (auto *GEPI = dyn_cast<GetElementPtrInst>(&I)) {
@@ -235,13 +245,15 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
             if (SourceEntry = MAI.getAliasEntry(BasePtr)) {
               if (MAI.tryInsertAliasEntry(SourceEntry, GEPI)) {
                 errs() << "  alias entry ";
-                GEPI->dump();
+                GEPI->print(errs());
+                errs() << "\n";
                 NumNewAdded++;
               }
             } else if (SourceEntry = MAI.getAliasEntry(GEPI)) {
               if (MAI.tryInsertAliasEntry(SourceEntry, BasePtr)) {
                 errs() << "  alias entry ";
-                BasePtr->dump();
+                BasePtr->print(errs());
+                errs() << "\n";
                 NumNewAdded++;
               }
             } else {
@@ -267,7 +279,8 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
               if (SourceEntry) {
                 if (MAI.tryInsertBaseOffsetAliasEntry(SourceEntry, BasePtr, V)) {
                   errs() << "  base alias offset entry (" << V << ") ";
-                  BasePtr->dump();
+                  BasePtr->print(errs());
+                  errs() << "\n";
                   NumNewAdded++;
                 }
               }
@@ -277,7 +290,8 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
                 int64_t Diff = EV.second - V;
                 if (MAI.tryInsertBaseOffsetAliasEntry(SourceEntry, GEPI, Diff)) {
                   errs() << "  base alias offset entry (" << Diff << ") ";
-                  GEPI->dump();
+                  GEPI->print(errs());
+                  errs() << "\n";
                   NumNewAdded++;
                 }
               }
@@ -331,7 +345,8 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
                     FIE->setParent(SourceEntry->func_map.find(&F)->second);
                     ArgsByVal.push_back(FIE);
                     errs() << "  alias entry (func arg) ";
-                    A->dump();
+                    A->print(errs());
+                    errs() << "\n";
                   }
                 } else {
                   if (MAI.tryInsertBaseAliasEntry(SourceEntry, &(*A))) {
@@ -342,7 +357,8 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
                     FIE->setParent(SourceEntry->func_map.find(&F)->second);
                     ArgsByRef.push_back(FIE);
                     errs() << "  base alias entry (func arg) ";
-                    A->dump();
+                    A->print(errs());
+                    errs() << "\n";
                     errs() << "Warning: cannot address base alias pointer as an argument yet";
                   }
                 }
@@ -590,10 +606,12 @@ bool OMPPass::optimizeDataMapping(Module &M) {
             FuncName = FuncName.substr(0, P);
           }
           assert(Args && CE);
-          I.dump();
+          I.print(errs());
+          errs() << "\n";
 
           if (auto *GV = dyn_cast<GlobalVariable>(CE->getOperand(0))) {
-            GV->dump();
+            GV->print(errs());
+            errs() << "\n";
             if (auto *C = dyn_cast<ConstantDataArray>(GV->getOperand(0))) {
               SmallVector<uint64_t, 16> MapTypes;
               bool LocalChanged = false;
@@ -607,7 +625,8 @@ bool OMPPass::optimizeDataMapping(Module &M) {
                          << "; " << Entry->getTgtLoadFreq() << ", " << Entry->getTgtStoreFreq() << ") is ";
                   Entry->dumpBase();
                   errs() << "    size is ";
-                  Entry->size->dump();
+                  Entry->size->print(errs());
+                  errs() << "\n";
                   double LocalReuse = 0.0;
                   //if ((V & 0x01 || V & 0x02) && !(V & 0x400)) {
                   //  V |= 0x400;
@@ -665,7 +684,8 @@ bool OMPPass::optimizeDataMapping(Module &M) {
                 GlobalVariable *NGV = new GlobalVariable(M, NCDA->getType(), true, GlobalValue::PrivateLinkage, NCDA, NGVName.str());
                 NGV->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
                 errs() << "    map type changed: ";
-                NGV->dump();
+                NGV->print(errs());
+                errs() << "\n";
                 //GV->replaceAllUsesWith(NGV);
                 //CE->setOperand(0, NGV);
                 LLVMContext& Ctx = M.getContext();

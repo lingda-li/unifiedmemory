@@ -99,7 +99,8 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
           if (FuncArgEntry *InsertEntry = FAI.getBaseAliasEntry(LoadAddr)) {
             if(FAI.tryInsertAliasEntry(InsertEntry, LI)) {
               errs() << "    alias entry ";
-              LI->dump();
+              LI->print(errs());
+              errs() << "\n";
               NumNewAdded++;
             }
           }
@@ -114,7 +115,8 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
           if (FuncArgEntry *InsertEntry = FAI.getAliasEntry(StoreContent)) {
             if (FAI.tryInsertBaseAliasEntry(InsertEntry, StoreAddr)) {
               errs() << "    base alias entry ";
-              StoreAddr->dump();
+              StoreAddr->print(errs());
+              errs() << "\n";
               NumNewAdded++;
             }
           }
@@ -133,7 +135,8 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
           if (auto *SourceEntry = FAI.getAliasEntry(CastSource)) {
             if (FAI.tryInsertAliasEntry(SourceEntry, BCI)) {
               errs() << "    alias entry ";
-              BCI->dump();
+              BCI->print(errs());
+              errs() << "\n";
               NumNewAdded++;
               NumAlias++;
             }
@@ -141,7 +144,8 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
           if (auto *SourceEntry = FAI.getBaseAliasEntry(CastSource)) {
             if (FAI.tryInsertBaseAliasEntry(SourceEntry, BCI)) {
               errs() << "    base alias entry ";
-              BCI->dump();
+              BCI->print(errs());
+              errs() << "\n";
               NumNewAdded++;
               NumAlias++;
             }
@@ -149,7 +153,8 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
           if (auto *SourceEntry = FAI.getAliasEntry(BCI)) {
             if (FAI.tryInsertAliasEntry(SourceEntry, CastSource)) {
               errs() << "  alias entry ";
-              CastSource->dump();
+              CastSource->print(errs());
+              errs() << "\n";
               NumNewAdded++;
               NumAlias++;
             }
@@ -157,14 +162,16 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
           if (auto *SourceEntry = FAI.getBaseAliasEntry(BCI)) {
             if (FAI.tryInsertBaseAliasEntry(SourceEntry, CastSource)) {
               errs() << "  base alias entry ";
-              CastSource->dump();
+              CastSource->print(errs());
+              errs() << "\n";
               NumNewAdded++;
               NumAlias++;
             }
           }
           if (NumAlias > 1) {
             errs() << "Error: a value is alias for multiple entries\n";
-            I.dump();
+            I.print(errs());
+            errs() << "\n";
             return false;
           }
         } else if (auto *GEPI = dyn_cast<GetElementPtrInst>(&I)) {
@@ -173,13 +180,15 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
           if (SourceEntry = FAI.getAliasEntry(BasePtr)) {
             if (FAI.tryInsertAliasEntry(SourceEntry, GEPI)) {
               errs() << "  alias entry ";
-              GEPI->dump();
+              GEPI->print(errs());
+              errs() << "\n";
               NumNewAdded++;
             }
           } else if (SourceEntry = FAI.getAliasEntry(GEPI)) {
             if (FAI.tryInsertAliasEntry(SourceEntry, BasePtr)) {
               errs() << "  alias entry ";
-              BasePtr->dump();
+              BasePtr->print(errs());
+              errs() << "\n";
               NumNewAdded++;
             }
           } else {
@@ -205,7 +214,8 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
             if (SourceEntry) {
               if (FAI.tryInsertBaseOffsetAliasEntry(SourceEntry, BasePtr, V)) {
                 errs() << "  base alias offset entry (" << V << ") ";
-                BasePtr->dump();
+                BasePtr->print(errs());
+                errs() << "\n";
                 NumNewAdded++;
               }
             }
@@ -214,7 +224,8 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
               int64_t Diff = EV.second - V;
               if (FAI.tryInsertBaseOffsetAliasEntry(SourceEntry, GEPI, Diff)) {
                 errs() << "  base alias offset entry (" << Diff << ") ";
-                GEPI->dump();
+                GEPI->print(errs());
+                errs() << "\n";
                 NumNewAdded++;
               }
             }
@@ -227,7 +238,8 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
   errs() << "Round end\n";
 
   // Access frequency analysis
-  BlockFrequencyInfo *BFI = &getAnalysis<BlockFrequencyInfoWrapperPass>(F).getBFI();
+  BlockFrequencyInfo *BFI =
+      &getAnalysis<BlockFrequencyInfoWrapperPass>(F).getBFI();
   for (auto &BB : F) {
     double Freq = (double)BFI->getBlockFreq(&BB).getFrequency() / (double)BFI->getEntryFreq();
     for (auto &I : BB) {

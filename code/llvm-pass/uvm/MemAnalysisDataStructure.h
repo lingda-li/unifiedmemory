@@ -41,9 +41,11 @@ class FuncInfoEntry {
 
     void dump() {
       errs() << "FuncInfoEntry: call: ";
-      call_point->dump();
+      call_point->print(errs());
+      errs() << "\n";
       errs() << "                arg: ";
-      arg->dump();
+      arg->print(errs());
+      errs() << "\n";
     }
 };
 
@@ -208,32 +210,41 @@ class DataEntry {
     void setRank(unsigned r) { rank = r; }
 
     void dumpBase() {
-      if (base_ptr) base_ptr->dump();
-      else {
+      if (base_ptr) {
+        base_ptr->print(errs());
+        errs() << "\n";
+      } else {
         assert(!alias_ptrs.empty());
-        alias_ptrs[0]->dump();
+        alias_ptrs[0]->print(errs());
+        errs() << "\n";
       }
     }
 
     void dump() {
       errs() << "DataEntry: ";
-      if (base_ptr) base_ptr->dump();
-      else {
+      if (base_ptr) {
+        base_ptr->print(errs());
+        errs() << "\n";
+      } else {
         assert(!alias_ptrs.empty());
-        alias_ptrs[0]->dump();
+        alias_ptrs[0]->print(errs());
+        errs() << "\n";
       }
       errs() << "BaseAlias: ";
       for (Value *CAPTR : base_alias_ptrs) {
-        CAPTR->dump();
+        CAPTR->print(errs());
+        errs() << "\n";
       }
       errs() << "BaseOffsetAlias: ";
       for (auto CAPTR : base_offset_alias_ptrs) {
         errs() << "(" << CAPTR.second << ") ";
-        CAPTR.first->dump();
+        CAPTR.first->print(errs());
+        errs() << "\n";
       }
       errs() << "Alias: ";
       for (Value *CAPTR : alias_ptrs) {
-        CAPTR->dump();
+        CAPTR->print(errs());
+        errs() << "\n";
       }
     }
 };

@@ -29,7 +29,9 @@ namespace {
             if (Callee && Callee->getName() == "cudaLaunch") {
               errs() << "I saw a function call of " << Callee->getName() << " (" << CI->getNumArgOperands() << ")\n";
               auto *A = CI->getArgOperand(0);
-              A->dump();
+              //A->dump();
+              A->print(errs());
+              errs() << "\n";
               if(auto *FA = dyn_cast<Function>(A))
                 errs() << "haha\n";
             //} else if (Callee && Callee->getName() == "cudaSetupArgument") {
@@ -38,10 +40,10 @@ namespace {
             //  A->dump();
             } else if (Callee && Callee->getName() == "cudaMalloc") {
               errs() << "I saw a function call of " << Callee->getName() << " (" << CI->getNumArgOperands() << ")\n";
-              CI->dump();
+              //CI->dump();
               for(int i = 0; i < CI->getNumArgOperands(); i++) {
                 auto *A = CI->getArgOperand(i);
-                A->dump();
+                //A->dump();
               }
 
               IRBuilder<> builder(CI);
@@ -56,7 +58,7 @@ namespace {
               errs() << "I saw a function call of " << Callee->getName() << " (" << CI->getNumArgOperands() << ")\n";
               for(int i = 0; i < CI->getNumArgOperands(); i++) {
                 auto *A = CI->getArgOperand(i);
-                A->dump();
+                //A->dump();
               }
 
               CallsToDelete.push_back(CI);
@@ -64,13 +66,15 @@ namespace {
               errs() << "I saw a function call of " << Callee->getName() << " (" << CI->getNumArgOperands() << ")\n";
               for(int i = 0; i < CI->getNumArgOperands(); i++) {
                 auto *A = CI->getArgOperand(i);
-                A->dump();
+                //A->dump();
+                A->print(errs());
+                errs() << "\n";
               }
             } else if (Callee && Callee->getName() == "malloc") {
               errs() << "I saw a function call of " << Callee->getName() << " (" << CI->getNumArgOperands() << ")\n";
               for(int i = 0; i < CI->getNumArgOperands(); i++) {
                 auto *A = CI->getArgOperand(i);
-                A->dump();
+                //A->dump();
               }
             }
           }

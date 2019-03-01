@@ -62,7 +62,8 @@ bool TFGPass::runOnModule(Module &M) {
           //if (Callee->getName().find("__tgt_target_data") != std::string::npos)
           //  continue;
           errs() << "  target call: ";
-          I.dump();
+          I.print(errs());
+          errs() << "\n";
           TargetRegions.push_back(&I);
           Res.TargetRegionMap[&I] = Idx;
           Idx++;
@@ -260,7 +261,8 @@ void TFGPass::dumpDis(Function *F) {
   for (unsigned TIdx = 0; TIdx < TargetNum; TIdx++) {
     auto *TR = TargetRegions[TIdx];
     errs() << "target " << TIdx << ": ";
-    TR->dump();
+    TR->print(errs());
+    errs() << "\n";
     for (auto &BB : *F) {
       errs() << "BB " << &BB << ": ";
       errs() << PreDis[TIdx][&BB] << "  " << PosDis[TIdx][&BB] << "\n";
