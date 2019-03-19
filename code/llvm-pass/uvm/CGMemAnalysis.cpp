@@ -74,8 +74,9 @@ bool FuncArgAccessCGInfoPass::runOnModule(Module &M) {
 
 bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
   // Add an entry for every pointer argument
-  int i = 0;
+  int i = -1;
   for (auto &A : F.args()) {
+    i++;
     auto *PT = dyn_cast<PointerType>(A.getType());
     if (!PT)
       continue;

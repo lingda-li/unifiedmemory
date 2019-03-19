@@ -16,6 +16,8 @@
 #include "OMPPass.h"
 using namespace llvm;
 
+//#define ENABLE_TFG
+
 char OMPPass::ID = 0;
 
 bool OMPPass::runOnModule(Module &M) {
@@ -38,7 +40,9 @@ void OMPPass::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<BranchProbabilityInfoWrapperPass>();
   AU.addRequired<BlockFrequencyInfoWrapperPass>();
   AU.addRequired<FuncArgAccessCGInfoPass>();
+#ifdef ENABLE_TFG
   AU.addRequired<TFGPass>();
+#endif
   AU.setPreservesCFG();
 }
 
@@ -99,7 +103,8 @@ bool OMPPass::analyzeGPUAlloc(Module &M) {
             auto *Device = CS.getArgOperand(1);
             if (auto *ConstantI = dyn_cast<ConstantInt>(Device)) {
               int64_t V = ConstantI->getSExtValue();
-              if (V == -100 && MAI.getAliasEntry(&I) == NULL) {
+              if ((V == -100 || V == -200 /*marker*/) &&
+                  MAI.getAliasEntry(&I) == NULL) {
                 errs() << "new entry ";
                 I.print(errs());
                 errs() << "\n";
@@ -457,6 +462,9 @@ void OMPPass::calculateAccessFreq(Module &M) {
             assert(C);
             unsigned NumArgs = C->getNumElements();
             std::string FuncName = CS.getArgOperand(1)->getName();
+            auto P = FuncName.find(".region_id");
+            FuncName = FuncName.substr(0, P);
+            FuncName.erase(0, 1); // remove '.'
             auto *Args = CS.getArgOperand(4);
             for (unsigned i = 0; i < NumArgs; i++) {
               auto *E = MAI.getBaseOffsetAliasEntries(Args, i);
@@ -562,6 +570,7 @@ void OMPPass::prepareOpt(Module &M) {
 }
 
 unsigned OMPPass::getReuseDist(DataEntry *E, Instruction *Src) {
+#ifdef ENABLE_TFG
   double minDist = TDI->INFDIS;
   for (auto Dst : E->kernel) {
     double Dist = TDI->getDist(Src, Dst);
@@ -569,12 +578,17 @@ unsigned OMPPass::getReuseDist(DataEntry *E, Instruction *Src) {
       minDist = Dist;
   }
   return TDI->getInt(minDist);
+#else
+  return 1;
+#endif
 }
 
 bool OMPPass::optimizeDataMapping(Module &M) {
   bool Changed = false;
   errs() << "  ---- Data Mapping Optimization ----\n";
+#ifdef ENABLE_TFG
   TDI = &getAnalysis<TFGPass>().getT2T();
+#endif
   for (Function &F : M) {
     if (F.isDeclaration())
       continue;
@@ -604,6 +618,7 @@ bool OMPPass::optimizeDataMapping(Module &M) {
             FuncName = CS.getArgOperand(1)->getName();
             auto P = FuncName.find(".region_id");
             FuncName = FuncName.substr(0, P);
+            FuncName.erase(0, 1); // remove '.'
           }
           assert(Args && CE);
           I.print(errs());
@@ -729,7 +744,9 @@ static void registerOMPPass(const PassManagerBuilder &,
   PM.add(new BlockFrequencyInfoWrapperPass());
   //PM.add(new CallGraphWrapperPass());
   PM.add(new FuncArgAccessCGInfoPass());
+#ifdef ENABLE_TFG
   PM.add(new TFGPass());
+#endif
   PM.add(new OMPPass());
 }
 static RegisterStandardPasses

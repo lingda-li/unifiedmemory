@@ -297,6 +297,10 @@ class FuncArgEntry : public DataEntry {
       }
       return NULL;
     }
+    void dump() {
+      errs() << "FuncArgEntry: " << func_name << " " << arg_num;
+      errs() << "\n";
+    }
 };
 
 template <class EntryTy>
