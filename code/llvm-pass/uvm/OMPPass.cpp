@@ -16,7 +16,7 @@
 #include "OMPPass.h"
 using namespace llvm;
 
-//#define ENABLE_TFG
+#define ENABLE_TFG
 
 char OMPPass::ID = 0;
 
@@ -195,8 +195,10 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
             if (DataEntry *InsertEntry = MAI.getBaseAliasEntry(StoreAddr)) {
               DataEntry *InsertEntry2 = MAI.getAliasEntry(StoreContent);
               if (InsertEntry != InsertEntry2) {
-                errs() << "Warning: store a different alias pointer to a base pointer\n";
-                return false;
+                errs() << "Warning: store a different alias pointer to a base pointer: ";
+                SI->print(errs());
+                errs() << "\n";
+                //return false;
               }
             }
           } else if (auto *BCI = dyn_cast<BitCastInst>(&I)) {
@@ -233,6 +235,34 @@ bool OMPPass::analyzePointerPropagation(Module &M) {
               if (MAI.tryInsertBaseAliasEntry(SourceEntry, CastSource)) {
                 errs() << "  base alias entry ";
                 CastSource->print(errs());
+                errs() << "\n";
+                NumNewAdded++;
+                NumAlias++;
+              }
+            }
+            if (NumAlias > 1) {
+              errs() << "Error: a value is alias for multiple entries\n";
+              I.print(errs());
+              errs() << "\n";
+              return false;
+            }
+          } else if (auto *PTII = dyn_cast<PtrToIntInst>(&I)) {
+            Value *BasePtr = PTII->getOperand(0);
+            unsigned NumAlias = 0;
+            DataEntry *SourceEntry;
+            if (SourceEntry = MAI.getAliasEntry(BasePtr)) {
+              if (MAI.tryInsertAliasEntry(SourceEntry, PTII)) {
+                errs() << "  alias entry ";
+                PTII->print(errs());
+                errs() << "\n";
+                NumNewAdded++;
+                NumAlias++;
+              }
+            }
+            if (auto *SourceEntry = MAI.getBaseAliasEntry(BasePtr)) {
+              if (MAI.tryInsertBaseAliasEntry(SourceEntry, PTII)) {
+                errs() << "  base alias entry ";
+                PTII->print(errs());
                 errs() << "\n";
                 NumNewAdded++;
                 NumAlias++;
@@ -660,7 +690,8 @@ bool OMPPass::optimizeDataMapping(Module &M) {
                     if (TFAE) {
                       LocalReuse = TFAE->getTgtLoadFreq() + TFAE->getTgtStoreFreq();
                       errs() << "    local reuse is " << LocalReuse << ", ";
-                      LocalReuse /= 0.3;
+                      //LocalReuse /= 0.3;
+                      LocalReuse /= 4.0;
                       auto *PT = dyn_cast<PointerType>(Entry->ptr_type);
                       assert(PT);
                       auto UnitSize = DL->getTypeAllocSize(PT->getElementType());
@@ -668,7 +699,7 @@ bool OMPPass::optimizeDataMapping(Module &M) {
                       LocalReuse *= UnitSize;
                       errs() << "" << LocalReuse << " after adjustment;\t\t";
                       uint64_t LocalReuseScale;
-                      LocalReuse *= 0x8;
+                      //LocalReuse *= 0x8;
                       if (LocalReuse > 0xfff)
                         LocalReuseScale = 0xfff;
                       else

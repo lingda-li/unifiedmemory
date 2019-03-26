@@ -315,6 +315,10 @@ class MemInfo {
       Entries.push_back(data_entry);
     }
 
+    void eraseTail() {
+      Entries.erase(Entries.end());
+    }
+
     EntryTy* getBaseAliasEntry(Value *base_alias_ptr) {
       for (auto &E : Entries) {
         if (E.getBaseAliasPtr(base_alias_ptr))

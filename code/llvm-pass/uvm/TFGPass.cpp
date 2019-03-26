@@ -38,25 +38,25 @@ bool TFGPass::runOnModule(Module &M) {
             auto FIT = find(FuncHasTarget.begin(), FuncHasTarget.end(), Callee);
             if (FIT == FuncHasTarget.end())
               continue;
-            // Insert special successor in this case
-            auto *SBB = &BB;
-            if (SuccMap.find(SBB) != SuccMap.end()) {
-              Function *CF;
-              while (1) {
-                auto *EBB = SuccMap[SBB];
-                CF = EBB->getParent();
-                assert(RetSuccMap.find(CF) != RetSuccMap.end());
-                SBB = RetSuccMap[CF].second;
-                if (RetSuccMap[CF].first == false)
-                  break;
-              }
-              assert(SBB == &BB);
-              assert(RetSuccMap.find(Callee) == RetSuccMap.end());
-              RetSuccMap[CF] = std::make_pair(true, &Callee->getEntryBlock());
-            } else
-              SuccMap[SBB] = &Callee->getEntryBlock();
-            assert(RetSuccMap.find(Callee) == RetSuccMap.end());
-            RetSuccMap[Callee] = std::make_pair(false, &BB);
+            //// Insert special successor in this case
+            //auto *SBB = &BB;
+            //if (SuccMap.find(SBB) != SuccMap.end()) {
+            //  Function *CF;
+            //  while (1) {
+            //    auto *EBB = SuccMap[SBB];
+            //    CF = EBB->getParent();
+            //    assert(RetSuccMap.find(CF) != RetSuccMap.end());
+            //    SBB = RetSuccMap[CF].second;
+            //    if (RetSuccMap[CF].first == false)
+            //      break;
+            //  }
+            //  assert(SBB == &BB);
+            //  assert(RetSuccMap.find(Callee) == RetSuccMap.end());
+            //  RetSuccMap[CF] = std::make_pair(true, &Callee->getEntryBlock());
+            //} else
+            //  SuccMap[SBB] = &Callee->getEntryBlock();
+            //assert(RetSuccMap.find(Callee) == RetSuccMap.end());
+            //RetSuccMap[Callee] = std::make_pair(false, &BB);
             continue;
           }
           //if (Callee->getName().find("__tgt_target_data") != std::string::npos)

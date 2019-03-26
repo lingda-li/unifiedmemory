@@ -48,11 +48,28 @@ bool FuncArgAccessCGInfoPass::runOnModule(Module &M) {
   //    computeLocalAccessFreq(*F);
   //  }
   //}
+  std::vector<Function *> FuncList;
   for (Function &F : M) {
     if (F.isDeclaration())
       continue;
-    errs() << "On function " << F.getName() << "\n";
-    computeLocalAccessFreq(F);
+    FuncList.push_back(&F);
+    //errs() << "On function " << F.getName() << "\n";
+    //bool R = computeLocalAccessFreq(F);
+  }
+  while (!FuncList.empty()) {
+    Function *F = FuncList.front();
+    FuncList.erase(FuncList.begin());
+    errs() << "On function " << F->getName() << "\n";
+    bool R = computeLocalAccessFreq(*F);
+    if (!R && TT.find("cuda") != std::string::npos) {
+      for (auto &A : F->args()) {
+        auto *PT = dyn_cast<PointerType>(A.getType());
+        if (!PT)
+          continue;
+        FAI.eraseTail();
+      }
+      FuncList.push_back(F);
+    }
   }
 
   // Output CUDA kernel analysis results
@@ -301,8 +318,10 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
                 E->store_freq += Freq * FAE->getStoreFreq();
                 E->addTgtLoadFreq(Freq * FAE->getTgtLoadFreq());
                 E->addTgtStoreFreq(Freq * FAE->getTgtStoreFreq());
-              } else if (!Callee->isDeclaration())
+              } else if (!Callee->isDeclaration()) {
                 errs() << "Warning: wrong traversal order, or recursive call\n";
+                return false;
+              }
             }
           }
         }
@@ -321,4 +340,5 @@ bool FuncArgAccessCGInfoPass::computeLocalAccessFreq(Function &F) {
       E.setValid();
     }
   }
+  return true;
 }
