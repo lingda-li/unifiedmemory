@@ -436,10 +436,11 @@ void OMPPass::calculateAccessFreq(Module &M) {
       std::string Line, Name;
       int ArgNum;
       double LoadFreq, StoreFreq;
+      size_t Size;
       while (getline(CudaFuncFile, Line)) {
         std::stringstream ss(Line);
-        ss >> Name >> ArgNum >> LoadFreq >> StoreFreq;
-        FuncArgEntry E(NULL, NULL, ArgNum, Name);
+        ss >> Name >> ArgNum >> LoadFreq >> StoreFreq >> Size;
+        FuncArgEntry E(NULL, NULL, ArgNum, Name, Size);
         E.addTgtLoadFreq(LoadFreq);
         E.addTgtStoreFreq(StoreFreq);
         TFAI.newEntry(E);
@@ -691,12 +692,12 @@ bool OMPPass::optimizeDataMapping(Module &M) {
                       LocalReuse = TFAE->getTgtLoadFreq() + TFAE->getTgtStoreFreq();
                       errs() << "    local reuse is " << LocalReuse << ", ";
                       //LocalReuse /= 0.3;
-                      LocalReuse /= 4.0;
-                      auto *PT = dyn_cast<PointerType>(Entry->ptr_type);
-                      assert(PT);
-                      auto UnitSize = DL->getTypeAllocSize(PT->getElementType());
-                      assert(UnitSize);
-                      LocalReuse *= UnitSize;
+                      //LocalReuse /= 4.0;
+                      //auto *PT = dyn_cast<PointerType>(Entry->ptr_type);
+                      //assert(PT);
+                      //auto UnitSize = DL->getTypeAllocSize(PT->getElementType());
+                      //assert(UnitSize);
+                      LocalReuse *= TFAE->getSize();
                       errs() << "" << LocalReuse << " after adjustment;\t\t";
                       uint64_t LocalReuseScale;
                       //LocalReuse *= 0x8;

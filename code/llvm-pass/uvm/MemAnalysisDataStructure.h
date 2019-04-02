@@ -253,16 +253,20 @@ class FuncArgEntry : public DataEntry {
   private:
     Value *arg;
     int arg_num;
+    size_t size;
     bool valid;
     std::string func_name;
 
   public:
     FuncArgEntry(Function *f, Value *a, int an)
-      : DataEntry(), arg(a), arg_num(an), valid(false) {
-      setFunc(f); }
-    FuncArgEntry(Function *f, Value *a, int an, std::string nm)
-      : DataEntry(), arg(a), arg_num(an), valid(false), func_name(nm) {
-      setFunc(f); }
+        : DataEntry(), arg(a), arg_num(an), valid(false) {
+      setFunc(f);
+    }
+    FuncArgEntry(Function *f, Value *a, int an, std::string nm, size_t size = 0)
+        : DataEntry(), arg(a), arg_num(an), valid(false), func_name(nm),
+          size(size) {
+      setFunc(f);
+    }
 
     bool isMatch(Function *f, int an) {
       if (func == f && arg_num == an)
@@ -277,6 +281,9 @@ class FuncArgEntry : public DataEntry {
           return true;
       return false;
     }
+
+    Value *getArg() { return arg; }
+    size_t getSize() { return size; }
     bool getValid() { return valid; }
     void setValid() { valid = true; }
     int getArgNum() { return arg_num; }

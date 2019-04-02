@@ -20,10 +20,11 @@ bool FuncArgAccessCGInfoPass::runOnModule(Module &M) {
       std::string Line, Name;
       int ArgNum;
       double LoadFreq, StoreFreq;
+      size_t Size;
       while (getline(CudaFuncFile, Line)) {
         std::stringstream ss(Line);
-        ss >> Name >> ArgNum >> LoadFreq >> StoreFreq;
-        FuncArgEntry E(NULL, NULL, ArgNum, Name);
+        ss >> Name >> ArgNum >> LoadFreq >> StoreFreq >> Size;
+        FuncArgEntry E(NULL, NULL, ArgNum, Name, Size);
         E.addTgtLoadFreq(LoadFreq);
         E.addTgtStoreFreq(StoreFreq);
         TFAI.newEntry(E);
@@ -73,6 +74,7 @@ bool FuncArgAccessCGInfoPass::runOnModule(Module &M) {
   }
 
   // Output CUDA kernel analysis results
+  auto *DL = new DataLayout(&M);
   if (TT.find("cuda") != std::string::npos) {
     std::ofstream Output("cuda_func_arg.lst");
     if (!Output.is_open())
@@ -81,7 +83,12 @@ bool FuncArgAccessCGInfoPass::runOnModule(Module &M) {
       Output << E.getName() << " ";
       Output << E.getArgNum() << " ";
       Output << E.getLoadFreq() << " ";
-      Output << E.getStoreFreq() << "\n";
+      Output << E.getStoreFreq() << " ";
+
+      auto *PT = dyn_cast<PointerType>(E.getArg()->getType());
+      assert(PT);
+      size_t Size = DL->getTypeAllocSize(PT->getElementType());
+      Output << Size << "\n";
     }
     Output.close();
   }
